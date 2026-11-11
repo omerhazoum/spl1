@@ -4,6 +4,7 @@
 #include "Model.h"
 #include "Server.h"
 #include "Request.h"
+#include "SchedulingPolicy.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -86,6 +87,13 @@ Server::Server(std::string configPath){
         this->nonSubmittedRequests.push_back(new EmbeddingRequest(r.id,*foundModel,r.admissionCycle,r.prompt));
        }
     }
+    if (JSONRead.policy == "arrival_order" || JSONRead.policy == "ArrivalOrderPolicy") {
+    this->policy = new ArrivalOrderPolicy();
+} else if (JSONRead.policy == "shortest_job" || JSONRead.policy == "ShortestJobPolicy") {
+    this->policy = new ShortestJobPolicy();
+} else if (JSONRead.policy == "longest_prefix" || JSONRead.policy == "LongestPrefixPolicy") {
+    this->policy = new LongestPrefixPolicy();
+}
 }
 void Server::serve() {}
 bool Server::step() {return false;}
