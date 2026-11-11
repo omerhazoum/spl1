@@ -1,8 +1,9 @@
 #include <fstream>
 #include <stdexcept>
 #include "json.hpp"
-
+#include "Model.h"
 #include "Server.h"
+#include "Request.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -56,3 +57,35 @@ Config Server::readConfig(string configPath) const{
 
     return Config{blockSize, gpuConfigs, modelConfigs, requestConfigs, policy};
 }
+Server::Server(std::string configPath){
+    Config JSONRead = readConfig(configPath);
+    for(GPUConfig g:JSONRead.gpus)
+    {
+        std::size_t blocksNum = g.memoryBytes / JSONRead.blockSize;
+        GPU gpu(blocksNum,JSONRead.blockSize);
+        this->gpus.push_back(gpu);
+    }
+    for (const ModelConfig& m:JSONRead.models)
+    {
+        this->models.push_back(new Model(m.id,m.embeddingSize));
+    }
+    for (const RequestConfig& r:JSONRead.requests)
+    {
+        const Model* foundModel = nullptr;
+       for (const Model* m : this->models) {
+       if (m->getId() == r.modelId) {  
+        foundModel = m;
+        break;
+    }
+}
+       if (r.type==RequestType::Generative)
+       {
+        this->nonSubmittedRequests.push_back(new GenerativeRequest(r.id,*foundModel,r.admissionCycle,r.prompt, r.scriptedOutput, r.maxOutputTokens));
+       }
+       else{
+        this->nonSubmittedRequests.push_back(new EmbeddingRequest(r.id,*foundModel,r.admissionCycle,r.prompt));
+       }
+    }
+}
+void Server::serve() {}
+bool Server::step() {return false;}

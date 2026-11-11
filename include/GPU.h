@@ -4,7 +4,8 @@
 #include <string>
 #include <cstddef>
 #include <vector>
-
+class GenerativeRequest;
+class EmbeddingRequest;
 struct PrefixMatch {
     std::size_t matchedTokens;
     std::vector<std::size_t> blockIds;
