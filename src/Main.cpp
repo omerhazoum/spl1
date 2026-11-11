@@ -10,5 +10,5 @@ int main(int argc, char** argv){
     }
     Server s(argv[1]);
     s.serve();
-    return 0; {}
+    return 0;
 }
