@@ -12,3 +12,8 @@ int main(int argc, char** argv){
     s.serve();
     return 0;
 }
+
+//git add .
+//git commit -m "blah blah"
+
+//git push origin main
