@@ -13,7 +13,8 @@ int main(int argc, char** argv){
     return 0;
 }
 
-//git add .
+//git add . - end
 //git commit -m "blah blah"
-
 //git push origin main
+
+//git pull origin main - start
