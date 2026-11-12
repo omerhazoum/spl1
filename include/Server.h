@@ -51,6 +51,8 @@ private:
 public:
     Server(std::string configPath);
     ~Server();
+    Server(const Server& other);
+    Server& operator=(const Server& other);
     bool step();
     void serve();
 };
