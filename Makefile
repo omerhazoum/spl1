@@ -1,7 +1,7 @@
 all: bin/server
 
-bin/server: bin/Main.o bin/Model.o bin/Server.o
-	g++ -o bin/server bin/Main.o bin/Model.o bin/Server.o
+bin/server: bin/Main.o bin/Model.o bin/Server.o bin/GPU.o bin/Request.o bin/SchedulingPolicy.o
+	g++ -o bin/server bin/Main.o bin/Model.o bin/Server.o bin/GPU.o bin/Request.o bin/SchedulingPolicy.o
 
 bin/Main.o: src/Main.cpp
 	g++ -Wall -Weffc++ -std=c++11 -c -Iinclude -g src/Main.cpp -o bin/Main.o
@@ -11,6 +11,15 @@ bin/Model.o: src/Model.cpp
 
 bin/Server.o: src/Server.cpp
 	g++ -Wall -Weffc++ -std=c++11 -c -Iinclude -g src/Server.cpp -o bin/Server.o
+
+bin/GPU.o: src/GPU.cpp
+	g++ -Wall -Weffc++ -std=c++11 -c -Iinclude -g src/GPU.cpp -o bin/GPU.o
+
+bin/Request.o: src/Request.cpp
+	g++ -Wall -Weffc++ -std=c++11 -c -Iinclude -g src/Request.cpp -o bin/Request.o
+
+bin/SchedulingPolicy.o: src/SchedulingPolicy.cpp
+	g++ -Wall -Weffc++ -std=c++11 -c -Iinclude -g src/SchedulingPolicy.cpp -o bin/SchedulingPolicy.o
 
 clean:
 	rm -f bin/*
