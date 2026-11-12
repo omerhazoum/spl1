@@ -163,12 +163,10 @@ Server& Server::operator=(const Server& other) {
             delete r;
         }
         delete this->policy;
-
         this->models.clear();
         this->nonSubmittedRequests.clear();
         this->waitingRequests.clear();
         this->activeRequests.clear();
-
         for(const Model* m : other.models) {
             this->models.push_back(new Model(*m));
         }
@@ -204,6 +202,41 @@ Server& Server::operator=(const Server& other) {
         }
         this->policy = other.policy ? other.policy->clone() : nullptr;
         this->gpus = other.gpus;
+    }
+    return *this;
+}
+Server::Server(Server&& other) noexcept {
+    this->models = std::move(other.models);
+    this->nonSubmittedRequests = std::move(other.nonSubmittedRequests);
+    this->waitingRequests = std::move(other.waitingRequests);
+    this->activeRequests = std::move(other.activeRequests);
+    this->policy = other.policy;
+    other.policy = nullptr;
+    this->gpus = std::move(other.gpus);
+}
+Server& Server::operator=(Server&& other) noexcept {
+    if (this != &other) {
+        for(Model* m : this->models) {
+            delete m;
+        }
+        for(Request* r : this->nonSubmittedRequests) {
+            delete r;
+        }
+        for(Request* r : this->waitingRequests) {
+            delete r;
+        }
+        for(Request* r : this->activeRequests) {
+            delete r;
+        }
+        delete this->policy;
+
+        this->models = std::move(other.models);
+        this->nonSubmittedRequests = std::move(other.nonSubmittedRequests);
+        this->waitingRequests = std::move(other.waitingRequests);
+        this->activeRequests = std::move(other.activeRequests);
+        this->policy = other.policy;
+        other.policy = nullptr;
+        this->gpus = std::move(other.gpus);
     }
     return *this;
 }

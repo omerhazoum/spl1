@@ -53,6 +53,8 @@ public:
     ~Server();
     Server(const Server& other);
     Server& operator=(const Server& other);
+    Server(Server&& other) noexcept;
+    Server& operator=(Server&& other) noexcept;   
     bool step();
     void serve();
 };
