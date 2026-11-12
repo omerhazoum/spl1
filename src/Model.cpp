@@ -54,3 +54,6 @@ size_t offset) const {
 }
 Model::Model(const std::string& id, std::size_t embeddingSize)
     : modelId(id), embeddingSize(embeddingSize) {}
+    std::vector<std::string> Model::tokenizer(std::string text) const {
+        
+}
