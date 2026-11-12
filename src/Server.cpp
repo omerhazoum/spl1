@@ -116,7 +116,7 @@ Server::Server(const Server& other){
 }
 for(const Request* r : other.nonSubmittedRequests) {
    Model* model = nullptr;
-    for (const Model* m : this->models) {
+    for (Model* m : this->models) {
         if (m->getId() == r->getModel().getId()) {
             model = m;
             break;
@@ -126,7 +126,7 @@ for(const Request* r : other.nonSubmittedRequests) {
 }
 for(const Request* r : other.waitingRequests) {
      Model* model = nullptr;
-    for (const Model* m : this->models) {
+    for (Model* m : this->models) {
         if (m->getId() == r->getModel().getId()) {
             model = m;
             break;
@@ -136,7 +136,7 @@ for(const Request* r : other.waitingRequests) {
 }
 for(const Request* r : other.activeRequests) {
       Model* model = nullptr;
-    for (const Model* m : this->models) {
+    for (Model* m : this->models) {
         if (m->getId() == r->getModel().getId()) {
             model = m;
             break;
@@ -144,7 +144,68 @@ for(const Request* r : other.activeRequests) {
     }
         this->activeRequests.push_back(r->clone(*model));
 }
-this->policy=other.policy;
+this->policy=other.policy ? other.policy->clone() : nullptr;
+this->gpus = other.gpus;
+}
+Server& Server::operator=(const Server& other) {
+    
+    if (this != &other) {
+        for(Model* m : this->models) {
+            delete m;
+        }
+        for(Request* r : this->nonSubmittedRequests) {
+            delete r;
+        }
+        for(Request* r : this->waitingRequests) {
+            delete r;
+        }
+        for(Request* r : this->activeRequests) {
+            delete r;
+        }
+        delete this->policy;
+
+        this->models.clear();
+        this->nonSubmittedRequests.clear();
+        this->waitingRequests.clear();
+        this->activeRequests.clear();
+
+        for(const Model* m : other.models) {
+            this->models.push_back(new Model(*m));
+        }
+        for(const Request* r : other.nonSubmittedRequests) {
+            Model* model = nullptr;
+            for (Model* m : this->models) {
+                if (m->getId() == r->getModel().getId()) {
+                    model = m;
+                    break;
+                }
+            }
+            this->nonSubmittedRequests.push_back(r->clone(*model));
+        }
+        for(const Request* r : other.waitingRequests) {
+            Model* model = nullptr;
+            for (Model* m : this->models) {
+                if (m->getId() == r->getModel().getId()) {
+                    model = m;
+                    break;
+                }
+            }
+            this->waitingRequests.push_back(r->clone(*model));
+        }
+        for(const Request* r : other.activeRequests) {
+            Model* model = nullptr;
+            for (Model* m : this->models) {
+                if (m->getId() == r->getModel().getId()) {
+                    model = m;
+                    break;
+                }
+            }
+            this->activeRequests.push_back(r->clone(*model));
+        }
+        this->policy = other.policy ? other.policy->clone() : nullptr;
+        this->gpus = other.gpus;
+    }
+    return *this;
 }
 void Server::serve() {}
 bool Server::step() {return false;}
