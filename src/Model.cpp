@@ -1,4 +1,6 @@
 #include <cstdint>
+#include <sstream>
+#include <cctype>
 #include "Model.h"
 #include "GPU.h"
 #include "Request.h"
@@ -50,3 +52,5 @@ size_t offset) const {
         gpu.writeToBlock(slot, offset + i, static_cast<int>(value % 2001ULL) - 1000);
     }
 }
+Model::Model(const std::string& id, std::size_t embeddingSize)
+    : modelId(id), embeddingSize(embeddingSize) {}
