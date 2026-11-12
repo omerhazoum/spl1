@@ -94,6 +94,7 @@ Server::Server(std::string configPath){
 } else if (JSONRead.policy == "longest_prefix" || JSONRead.policy == "LongestPrefixPolicy") {
     this->policy = new LongestPrefixPolicy();
 }
+else { this->policy = nullptr; }
 }
 Server::~Server() {
    for(Model* m : this->models) {
@@ -240,5 +241,9 @@ Server& Server::operator=(Server&& other) noexcept {
     }
     return *this;
 }
-void Server::serve() {}
+void Server::serve() {
+ while (step()) {
+    } 
+// TODO: print summary line
+}
 bool Server::step() {return false;}
