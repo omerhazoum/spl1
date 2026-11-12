@@ -50,6 +50,7 @@ private:
     SchedulingPolicy* policy;
 public:
     Server(std::string configPath);
+    ~Server();
     bool step();
     void serve();
 };
