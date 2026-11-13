@@ -149,4 +149,62 @@ return {compTokens,blockIds};
     }
  }
 
-int GPU::readFromBlock(std::size_t blockId, std::size_t offset) const;
+int GPU::readFromBlock(std::size_t blockId, std::size_t offset) const{
+    return memory[blockId]->readFromBlock(offset);
+}
+
+void GPU::writeToBlock(std::size_t blockId, std::size_t offset, int value){
+    memory[blockId]->writeToBlock(offset, value);
+}
+
+//rule of 5 implemention
+
+GPU::~GPU(){
+    for(size_t i=0;i<memory.size();i++)
+    {
+        if(memory[i]!=nullptr)
+        {
+            delete memory[i];
+            memory[i] = nullptr;
+        }
+    }
+}
+
+GPU::GPU(const GPU& other): blocksNum(other.blocksNum),
+      blockSize(other.blockSize),
+      reservedSlots(other.reservedSlots),
+      memory(other.memory.size(), nullptr),
+      requestReservations(other.requestReservations),
+      blockPrefixes(other.blockPrefixes){
+     for(size_t i=0;i<other.memory.size();i++)
+    {
+        if(other.memory[i]!=nullptr)
+        {
+            this->memory[i] = other.memory[i]->clone();
+        }
+    }
+}
+
+GPU& GPU::operator=(const GPU& other){
+     if (this==&other)return *this;
+     for (size_t i=0;i<memory.size();i++)
+     {
+        delete memory[i];
+        memory[i]= nullptr;
+     }
+      blocksNum = (other.blocksNum);
+      blockSize = (other.blockSize);
+      reservedSlots = (other.reservedSlots);
+      memory.assign(other.memory.size(), nullptr);
+      requestReservations = (other.requestReservations);
+      blockPrefixes = (other.blockPrefixes);
+     for(size_t i=0;i<other.memory.size();i++)
+    {
+        if(other.memory[i]!=nullptr)
+        {
+            this->memory[i] = other.memory[i]->clone();
+        }
+    }
+    return *this;
+}
+

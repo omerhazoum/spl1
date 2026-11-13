@@ -14,6 +14,7 @@ public:
     MemoryBlock(size_t size);
     virtual IdleAction onLastRelease() const = 0;
     virtual MemoryBlock* clone() const = 0;
+    virtual ~MemoryBlock();
     int readFromBlock(std::size_t offset) const;
     void writeToBlock(std::size_t offset, int value);
     void acquire();
