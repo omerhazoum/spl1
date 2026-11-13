@@ -208,3 +208,34 @@ GPU& GPU::operator=(const GPU& other){
     return *this;
 }
 
+GPU::GPU(GPU&& other) noexcept
+    : blocksNum(other.blocksNum),
+      blockSize(other.blockSize),
+      reservedSlots(other.reservedSlots),
+      memory(move(other.memory)),
+      requestReservations(move(other.requestReservations)),
+      blockPrefixes(move(other.blockPrefixes)) {
+    other.blocksNum = 0;
+    other.blockSize = 0;
+    other.reservedSlots = 0;
+}
+
+GPU& GPU::operator=(GPU&& other) noexcept{
+      if (this==&other)return *this;
+     for (size_t i=0;i<memory.size();i++)
+     {
+        delete memory[i];
+        memory[i]= nullptr;
+     }
+      blocksNum = (other.blocksNum);
+      blockSize = (other.blockSize);
+      reservedSlots = (other.reservedSlots);
+      memory = move(other.memory);
+      requestReservations = move(other.requestReservations);
+      blockPrefixes = move(other.blockPrefixes);
+      other.blocksNum = 0;
+      other.blockSize = 0;
+     other.reservedSlots = 0;
+    return *this;
+}
+
