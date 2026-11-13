@@ -55,5 +55,21 @@ size_t offset) const {
 Model::Model(const std::string& id, std::size_t embeddingSize)
     : modelId(id), embeddingSize(embeddingSize) {}
     std::vector<std::string> Model::tokenizer(std::string text) const {
-        
+    std::string CurrentToken;
+    std::vector<std::string> tokens;
+        for (char& c : text) {
+     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+        CurrentToken += c;
+     }
+     else if (c == ' ') {
+        if (!CurrentToken.empty()) {
+            tokens.push_back(CurrentToken);
+            CurrentToken.clear();
+        }
+    }
+}
+    if (!CurrentToken.empty()) {
+        tokens.push_back(CurrentToken);
+    }
+    return tokens;
 }
