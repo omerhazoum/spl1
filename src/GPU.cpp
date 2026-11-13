@@ -34,7 +34,7 @@ std::size_t GPU::getBlocksForMemory(std::size_t memory) const {
  void GPU::reserve(std::size_t n, const Request& request) {
     requestReservations[&request] += n;
     reservedSlots += n;
- }
+}
 
  void GPU::unreserve(std::size_t n, const Request& request) {
     if (requestReservations.count(&request) == 0) {
@@ -83,4 +83,12 @@ std::size_t GPU::allocateBlock(const Request& request){
     acquire(firstSlotEmpty);
     unreserve(1, request);
     return firstSlotEmpty;
+}
+
+void GPU::addMemoryBlock(const GenerativeRequest& request, std::size_t slot){
+    memory[slot] = new KVBlock(blockSize);
+}
+
+void GPU::addMemoryBlock(const EmbeddingRequest& request, std::size_t slot){
+    memory[slot] = new EmbeddingWorkspace(blockSize);
 }
