@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <vector>
 #include <map>
+#include <utility>
 
 class GenerativeRequest;
 class EmbeddingRequest;
@@ -40,6 +41,7 @@ private:
     std::vector<MemoryBlock*> memory;
     std::size_t reservedSlots;
     std::map<const Request*, std::size_t> requestReservations;
+    std::map<std::size_t, std::pair<std::string, std::vector<std::string>>> blockPrefixes;
 };
 
 #endif

@@ -1,5 +1,7 @@
 #include <fstream>
 #include <stdexcept>
+#include <map>
+#include <utility>
 #include "json.hpp"
 #include "Model.h"
 #include "Server.h"
@@ -72,6 +74,7 @@ std::size_t GPU::allocateBlock(const Request& request){
             firstSlotEmpty=i;
             delete memory[i];
             memory[i]=nullptr;
+            blockPrefixes.erase(i);
             found = true;
         }
     }
@@ -92,3 +95,45 @@ void GPU::addMemoryBlock(const GenerativeRequest& request, std::size_t slot){
 void GPU::addMemoryBlock(const EmbeddingRequest& request, std::size_t slot){
     memory[slot] = new EmbeddingWorkspace(blockSize);
 }
+
+void GPU::assignPrefixToBlock(std::size_t block, const std::vector<std::string>& prefixTokens, const std::string& modelId){
+if (block>=memory.size()||memory[block]==nullptr) return;
+    for(const std::pair<const std::size_t, std::pair<std::string, std::vector<std::string>>>& model:blockPrefixes){
+        if(model.first!=block && model.second.first==modelId&&model.second.second==prefixTokens){
+            return;
+        }
+    }
+blockPrefixes[block] = {modelId,prefixTokens};
+}
+
+PrefixMatch GPU::findLongestCachedPrefix(const std::string& modelId, std::size_t embeddingSize,
+                                        const std::vector<std::string>& promptTokens) const{
+if(embeddingSize==0||blockSize/embeddingSize==0) return {0, {}};
+size_t t = blockSize / embeddingSize;
+size_t compTokens =0;
+vector<std::size_t> blockIds;
+for (size_t len = t; len <= promptTokens.size(); len += t){
+    vector<string> currentPre(promptTokens.begin(),promptTokens.begin()+len);
+    bool found = false;
+    for(const pair<const size_t, pair<string, vector<std::string>>>& model:blockPrefixes){
+        if (model.second.first == modelId && model.second.second == currentPre){
+            blockIds.push_back(model.first);
+            compTokens = len;
+            found = true;
+            break;
+        }
+    }
+    if (!found) break;
+}
+return {compTokens,blockIds};
+}
+
+ void GPU::copyMemoryFromOtherGPU(const GPU& other,const std::vector<std::size_t>& blocks){
+  for(size_t slot: blocks){
+    if(slot>=other.memory.size()||other.memory[slot]==nullptrother.blockPrefixes.count(slot) == 0) continue;
+    else{
+        const pair<string, vector<string>>& prefixInfo = other.blockPrefixes.at(slot);
+        //
+    }
+  }
+ }
