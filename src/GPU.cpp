@@ -51,5 +51,36 @@ std::size_t GPU::getBlocksForMemory(std::size_t memory) const {
 }
 
 std::size_t GPU::allocateBlock(const Request& request){
-
+    if(requestReservations.count(&request) == 0||requestReservations[&request] == 0){
+        throw std::runtime_error("missing key or invalid reservations number");
+        //check whether needed or not!!!
+    }
+    std::size_t firstSlotEmpty;
+    bool found = false;
+    for(std::size_t i=0;i<memory.size()&&(!found);i++)
+    {
+        if(memory[i]==nullptr)
+        {
+            firstSlotEmpty=i;
+            found = true;
+        }
+    }
+     for(std::size_t i=0;i<memory.size()&&(!found);i++)
+    {
+        if(memory[i] != nullptr && memory[i]->getRefCount() == 0)
+        {
+            firstSlotEmpty=i;
+            delete memory[i];
+            memory[i]=nullptr;
+            found = true;
+        }
+    }
+    if(!found){
+        throw std::runtime_error("no suitable slot available");
+        //check whether needed or not!!!
+    }
+    request.allocateOneBlock(*this,firstSlotEmpty);
+    acquire(firstSlotEmpty);
+    unreserve(1, request);
+    return firstSlotEmpty;
 }
