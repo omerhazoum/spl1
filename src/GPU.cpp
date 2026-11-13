@@ -23,9 +23,33 @@ GPU::GPU(std::size_t blocksNum, std::size_t blockSize)
     }
     return blocksNum - active - reservedSlots;
  }    
+
 std::size_t GPU::getBlocksForMemory(std::size_t memory) const {
     if (memory == 0|| blockSize == 0) {
         return 0;
     }
     return (memory + blockSize - 1) / blockSize;
+}
+
+ void GPU::reserve(std::size_t n, const Request& request) {
+    requestReservations[&request] += n;
+    reservedSlots += n;
+ }
+
+ void GPU::unreserve(std::size_t n, const Request& request) {
+    if (requestReservations.count(&request) == 0) {
+        return;
+    }
+    else if (requestReservations[&request] <= n)
+    {
+        reservedSlots -= requestReservations[&request];
+        requestReservations.erase(&request);
+    } else{
+    requestReservations[&request] -= n;
+    reservedSlots -= n;
+    }
+}
+
+std::size_t GPU::allocateBlock(const Request& request){
+
 }
