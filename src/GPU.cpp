@@ -130,10 +130,23 @@ return {compTokens,blockIds};
 
  void GPU::copyMemoryFromOtherGPU(const GPU& other,const std::vector<std::size_t>& blocks){
   for(size_t slot: blocks){
-    if(slot>=other.memory.size()||other.memory[slot]==nullptrother.blockPrefixes.count(slot) == 0) continue;
+    if(slot>=other.memory.size()||other.memory[slot]==nullptr||other.blockPrefixes.count(slot) == 0) continue;
     else{
         const pair<string, vector<string>>& prefixInfo = other.blockPrefixes.at(slot);
-        //
+        //NOT FINISHED!!!!
     }
   }
  }
+
+ void GPU::acquire(std::size_t slot){memory[slot]->acquire();}
+
+ void GPU::release(std::size_t slot){
+    IdleAction act = memory[slot]->release();
+    if(memory[slot]->getRefCount()==0 && (act==IdleAction::Destroy || blockPrefixes.count(slot)==0)){
+        delete memory[slot];
+        memory[slot] = nullptr;
+        blockPrefixes.erase(slot);
+    }
+ }
+
+int GPU::readFromBlock(std::size_t blockId, std::size_t offset) const;
