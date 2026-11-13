@@ -6,6 +6,7 @@
 #include <vector>
 class GenerativeRequest;
 class EmbeddingRequest;
+class Request;
 struct PrefixMatch {
     std::size_t matchedTokens;
     std::vector<std::size_t> blockIds;
@@ -35,6 +36,7 @@ private:
     std::size_t blocksNum;
     std::size_t blockSize;
     std::vector<MemoryBlock*> memory;
+    std::size_t reservedSlots;
 };
 
 #endif

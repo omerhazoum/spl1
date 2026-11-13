@@ -18,6 +18,7 @@ public:
     void writeToBlock(std::size_t offset, int value);
     void acquire();
     IdleAction release();
+    int getRefCount() const { return refCount; }
 };
 
 class KVBlock: public MemoryBlock{
