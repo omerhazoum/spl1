@@ -18,7 +18,9 @@ struct PrefixMatch {
 class MemoryBlock;
 
 class GPU{
-public:
+public: 
+    std::size_t getCacheHits() const;
+    std::size_t getEvictions() const;
    ~GPU();
     GPU(const GPU& other);
     GPU& operator=(const GPU& other);
@@ -47,6 +49,8 @@ private:
     std::size_t reservedSlots;
     std::map<const Request*, std::size_t> requestReservations;
     std::map<std::size_t, std::pair<std::string, std::vector<std::string>>> blockPrefixes;
+    std::size_t cacheHits;
+    std::size_t evictions;
 };
 
 #endif

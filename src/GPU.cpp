@@ -14,7 +14,11 @@ using namespace std;
 using json = nlohmann::json;
 
 GPU::GPU(std::size_t blocksNum, std::size_t blockSize)
-    : blocksNum(blocksNum), blockSize(blockSize), memory(blocksNum, nullptr), reservedSlots(0) {}
+    : blocksNum(blocksNum), blockSize(blockSize), memory(blocksNum, nullptr), reservedSlots(0), requestReservations(), blockPrefixes(), cacheHits(0), evictions(0) {}
+
+size_t GPU::getCacheHits() const { return cacheHits; }
+
+size_t GPU::getEvictions() const { return evictions; }
 
  std::size_t GPU::availableSlots() const{
     std::size_t active = 0;
@@ -75,6 +79,7 @@ std::size_t GPU::allocateBlock(const Request& request){
             delete memory[i];
             memory[i]=nullptr;
             blockPrefixes.erase(i);
+            evictions++;
             found = true;
         }
     }
@@ -129,16 +134,61 @@ return {compTokens,blockIds};
 }
 
  void GPU::copyMemoryFromOtherGPU(const GPU& other,const std::vector<std::size_t>& blocks){
-  for(size_t slot: blocks){
+    vector<std::size_t> verifiedSlots;
+    for(size_t slot: blocks){
     if(slot>=other.memory.size()||other.memory[slot]==nullptr||other.blockPrefixes.count(slot) == 0) continue;
-    else{
         const pair<string, vector<string>>& prefixInfo = other.blockPrefixes.at(slot);
-        //NOT FINISHED!!!!
-    }
+        bool isExist = false;
+        for (const pair<const size_t, pair<string, vector<string>>>& model:blockPrefixes)
+        if ((model.second == prefixInfo)&&(!isExist)){
+            verifiedSlots.push_back(model.first);
+            isExist = true;
+        }
+        if (isExist) continue;
+        size_t availableSlot=0;
+        bool found=false;
+        for (size_t i=0;i<memory.size()&&(!found);i++)
+        {
+            if (memory[i]==nullptr){
+                availableSlot=i;
+                found = true;
+            }
+        }
+        if (!found){
+             for (size_t i=0;i<memory.size()&&(!found);i++)
+        {
+            if (memory[i]!=nullptr&&memory[i]->getRefCount()==0){
+                bool goodForUse=false;
+                for(size_t vslot:verifiedSlots){
+                    if (vslot==i){
+                        goodForUse=true;
+                        break;
+                    }
+                }
+                if ((!goodForUse)&&(!found)) {
+                    availableSlot = i;
+                    delete memory[i];
+                    memory[i]=nullptr;
+                    blockPrefixes.erase(i);
+                    evictions++;
+                    found = true;
+                }
+            }
+        }
   }
+  if (!found) continue;
+  memory[availableSlot] = other.memory[slot]->clone();
+  blockPrefixes[availableSlot] = prefixInfo;
+  verifiedSlots.push_back(availableSlot);
  }
+}
 
- void GPU::acquire(std::size_t slot){memory[slot]->acquire();}
+ void GPU::acquire(std::size_t slot){
+    if (blockPrefixes.count(slot) > 0) {
+        cacheHits++;
+    }
+    memory[slot]->acquire();
+}
 
  void GPU::release(std::size_t slot){
     IdleAction act = memory[slot]->release();
@@ -172,15 +222,21 @@ GPU::~GPU(){
 
 GPU::GPU(const GPU& other): blocksNum(other.blocksNum),
       blockSize(other.blockSize),
-      reservedSlots(other.reservedSlots),
       memory(other.memory.size(), nullptr),
+      reservedSlots(other.reservedSlots),
       requestReservations(other.requestReservations),
-      blockPrefixes(other.blockPrefixes){
+      blockPrefixes(other.blockPrefixes),
+      cacheHits(other.cacheHits),
+      evictions(other.evictions)
+      {
      for(size_t i=0;i<other.memory.size();i++)
     {
         if(other.memory[i]!=nullptr)
         {
             this->memory[i] = other.memory[i]->clone();
+            for (size_t r = 0; r < other.memory[i]->getRefCount(); r++) {
+                this->memory[i]->acquire();
+            }
         }
     }
 }
@@ -194,15 +250,20 @@ GPU& GPU::operator=(const GPU& other){
      }
       blocksNum = (other.blocksNum);
       blockSize = (other.blockSize);
-      reservedSlots = (other.reservedSlots);
       memory.assign(other.memory.size(), nullptr);
+      reservedSlots = (other.reservedSlots);
       requestReservations = (other.requestReservations);
       blockPrefixes = (other.blockPrefixes);
+      cacheHits = other.cacheHits;
+      evictions = other.evictions;
      for(size_t i=0;i<other.memory.size();i++)
     {
         if(other.memory[i]!=nullptr)
         {
             this->memory[i] = other.memory[i]->clone();
+            for (size_t r = 0; r < other.memory[i]->getRefCount(); r++) {
+                this->memory[i]->acquire();
+            }
         }
     }
     return *this;
@@ -211,13 +272,17 @@ GPU& GPU::operator=(const GPU& other){
 GPU::GPU(GPU&& other) noexcept
     : blocksNum(other.blocksNum),
       blockSize(other.blockSize),
-      reservedSlots(other.reservedSlots),
       memory(move(other.memory)),
+      reservedSlots(other.reservedSlots),
       requestReservations(move(other.requestReservations)),
-      blockPrefixes(move(other.blockPrefixes)) {
+      blockPrefixes(move(other.blockPrefixes)), 
+      cacheHits(other.cacheHits),
+      evictions(other.evictions){
     other.blocksNum = 0;
     other.blockSize = 0;
     other.reservedSlots = 0;
+    other.cacheHits=0;
+    other.evictions=0;
 }
 
 GPU& GPU::operator=(GPU&& other) noexcept{
@@ -229,13 +294,17 @@ GPU& GPU::operator=(GPU&& other) noexcept{
      }
       blocksNum = (other.blocksNum);
       blockSize = (other.blockSize);
-      reservedSlots = (other.reservedSlots);
       memory = move(other.memory);
+      reservedSlots = (other.reservedSlots);
       requestReservations = move(other.requestReservations);
       blockPrefixes = move(other.blockPrefixes);
+      cacheHits = other.cacheHits;
+      evictions = other.evictions;
       other.blocksNum = 0;
       other.blockSize = 0;
-     other.reservedSlots = 0;
+      other.reservedSlots = 0;
+      other.cacheHits=0;
+      other.evictions=0;
     return *this;
 }
 
