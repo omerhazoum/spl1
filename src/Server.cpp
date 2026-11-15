@@ -58,7 +58,7 @@ Config Server::readConfig(string configPath) const{
 
     return Config{blockSize, gpuConfigs, modelConfigs, requestConfigs, policy};
 }
-Server::Server(std::string configPath){
+Server::Server(std::string configPath) {
     Config JSONRead = readConfig(configPath);
     for(GPUConfig g:JSONRead.gpus)
     {
