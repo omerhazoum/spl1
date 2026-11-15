@@ -78,13 +78,20 @@ Server::Server(std::string configPath){
         break;
     }
 }
-       if (r.type==RequestType::Generative)
-       {
+    if (r.type==RequestType::Generative)
+    {
         this->nonSubmittedRequests.push_back(new GenerativeRequest(r.id,*foundModel,r.admissionCycle,r.prompt, r.scriptedOutput, r.maxOutputTokens));
-       }
-       else{
+    }
+    else
+    {
         this->nonSubmittedRequests.push_back(new EmbeddingRequest(r.id,*foundModel,r.admissionCycle,r.prompt));
-       }
+    }
+    if (JSONRead.policy == "arrival_order" || JSONRead.policy == "ArrivalOrderPolicy") {
+        this->policy = new ArrivalOrderPolicy();
+    } else if (JSONRead.policy == "shortest_job" || JSONRead.policy == "ShortestJobPolicy") {
+        this->policy = new ShortestJobPolicy();
+    } else if (JSONRead.policy == "longest_prefix" || JSONRead.policy == "LongestPrefixPolicy") {
+        this->policy = new LongestPrefixPolicy();
     }
 }
 void Server::serve() {}
