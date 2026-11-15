@@ -95,5 +95,21 @@ Server::Server(std::string configPath) {
         this->policy = new LongestPrefixPolicy();
     }
 }
+Server::~Server() {
+    
+    for (Model* m : this->models) {
+        delete m;
+    }
+    for (Request* r : this->nonSubmittedRequests) {
+        delete r;
+    }
+    for (Request* r : this->waitingRequests) {
+        delete r;
+    }
+    for (Request* r : this->activeRequests) {
+        delete r;
+    }
+    delete this->policy;
+}
 void Server::serve() {}
 bool Server::step() {return false;}
