@@ -4,6 +4,7 @@
 #include "Model.h"
 #include "Server.h"
 #include "Request.h"
+#include "SchedulingPolicy.h"
 
 using namespace std;
 using json = nlohmann::json;
