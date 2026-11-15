@@ -8,6 +8,7 @@
 
 using namespace std;
 using json = nlohmann::json;
+int currentCycle = 0;
 
 Config Server::readConfig(string configPath) const{
     std::ifstream input(configPath);
@@ -111,5 +112,28 @@ Server::~Server() {
     }
     delete this->policy;
 }
-void Server::serve() {}
-bool Server::step() {return false;}
+void Server::serve() {
+    while (step());
+    // summarize the results of the simulation (cycles, cache_hits, evictions)
+}
+bool Server::step() {
+    for (auto it = this->nonSubmittedRequests.begin(); it != this->nonSubmittedRequests.end();) {
+        if ((*it)->getAdmissionCycle() == currentCycle) {
+            this->waitingRequests.push_back(*it);
+            this->nonSubmittedRequests.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+    const std::vector<const Request*> eligibleRequests(this->waitingRequests.begin(), this->waitingRequests.end());
+    std::vector<int> chosenIndices = this->policy->choose(eligibleRequests, this->gpus);
+    for (int index : chosenIndices) {
+        Request* request = this->waitingRequests[index];
+        GPU* bestGPU = nullptr;
+        for (GPU& gpu : this->gpus) {
+            PreFixMatch match = gpu.findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
+            
+        }
+    currentCycle++;
+}

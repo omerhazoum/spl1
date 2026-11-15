@@ -11,6 +11,7 @@ protected:
     int refCount;
     int* data;
 public:
+    int getRefCount() const;
     MemoryBlock(size_t size);
     virtual IdleAction onLastRelease() const = 0;
     virtual MemoryBlock* clone() const = 0;

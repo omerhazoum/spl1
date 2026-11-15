@@ -48,6 +48,8 @@ private:
     std::vector<Request*> waitingRequests;
     std::vector<Request*> activeRequests;
     SchedulingPolicy* policy;
+
+    int currentCycle;
 public:
     Server(std::string configPath);
     bool step();
