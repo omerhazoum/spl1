@@ -5,6 +5,7 @@
 #include <string>
 #include "Request.h"
 #include "GPU.h"
+#include <unordered_map>
 
 struct GPUConfig{
     std::size_t memoryBytes;

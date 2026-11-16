@@ -5,10 +5,10 @@
 #include "Server.h"
 #include "Request.h"
 #include "SchedulingPolicy.h"
+#include <tuple>
 
 using namespace std;
 using json = nlohmann::json;
-int currentCycle = 0;
 
 Config Server::readConfig(string configPath) const{
     std::ifstream input(configPath);
@@ -60,6 +60,7 @@ Config Server::readConfig(string configPath) const{
     return Config{blockSize, gpuConfigs, modelConfigs, requestConfigs, policy};
 }
 Server::Server(std::string configPath) {
+    this->currentCycle = 0;
     Config JSONRead = readConfig(configPath);
     for(GPUConfig g:JSONRead.gpus)
     {
@@ -88,13 +89,13 @@ Server::Server(std::string configPath) {
         {
             this->nonSubmittedRequests.push_back(new EmbeddingRequest(r.id,*foundModel,r.admissionCycle,r.prompt));
         }
-        if (JSONRead.policy == "arrival_order" || JSONRead.policy == "ArrivalOrderPolicy") {
-            this->policy = new ArrivalOrderPolicy();
-        } else if (JSONRead.policy == "shortest_job" || JSONRead.policy == "ShortestJobPolicy") {
-            this->policy = new ShortestJobPolicy();
-        } else if (JSONRead.policy == "longest_prefix" || JSONRead.policy == "LongestPrefixPolicy") {
-            this->policy = new LongestPrefixPolicy();
-        }
+    }
+    if (JSONRead.policy == "arrival_order" || JSONRead.policy == "ArrivalOrderPolicy") {
+        this->policy = new ArrivalOrderPolicy();
+    } else if (JSONRead.policy == "shortest_job" || JSONRead.policy == "ShortestJobPolicy") {
+        this->policy = new ShortestJobPolicy();
+    } else if (JSONRead.policy == "longest_prefix" || JSONRead.policy == "LongestPrefixPolicy") {
+        this->policy = new LongestPrefixPolicy();
     }
 }
 Server::~Server() {
@@ -139,5 +140,5 @@ bool Server::tryAdmitRequest(Request* request) {
     
 }
 void Server::processActiveRequests() {
-    
+
 }
