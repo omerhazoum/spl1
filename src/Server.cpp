@@ -131,7 +131,14 @@ bool Server::step() {
     return true;
 }
 void Server::submitArrivedRequests() {
-
+    for (auto it = this->nonSubmittedRequests.begin(); it != this->nonSubmittedRequests.end();) {
+        if ((*it)->getAdmissionCycle() == currentCycle) {
+            this->waitingRequests.push_back(*it);
+            it = this->nonSubmittedRequests.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 void Server::admitWaitingRequests() {
 
