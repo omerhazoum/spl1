@@ -43,8 +43,13 @@ private:
 
     // created by me
     int currentCycle;
+    std::unordered_map<int, size_t> requestToGpu;
+    void submitArrivedRequests();
+    void admitWaitingRequests();
+    bool tryAdmitRequest(Request* request);
+    void processActiveRequests();
     //
-    
+
     Config readConfig(std::string configPath) const;
 
     std::vector<GPU> gpus;

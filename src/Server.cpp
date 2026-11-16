@@ -121,66 +121,23 @@ bool Server::step() {
     if (this->nonSubmittedRequests.empty() && this->waitingRequests.empty() && this->activeRequests.empty()) {
         return false; // No more requests to process
     }
-    for (auto it = this->nonSubmittedRequests.begin(); it != this->nonSubmittedRequests.end();) {
-        if ((*it)->getAdmissionCycle() == currentCycle) {
-            this->waitingRequests.push_back(*it);
-            it = this->nonSubmittedRequests.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
-    const std::vector<const Request*> eligibleRequests(this->waitingRequests.begin(), this->waitingRequests.end());
-    std::vector<int> chosenIndices = this->policy->choose(eligibleRequests, this->gpus);
-    for (int index : chosenIndices) {
-        Request* request = this->waitingRequests[index];
-        GPU* bestGPU = nullptr;
-        std::tuple<size_t, size_t> bestScore = {0,0};
-        GPU* longestPrefixGPU = nullptr;
-        PrefixMatch longestMatch = {0, {}};
 
-        for (GPU& gpu : this->gpus) {
-            PrefixMatch match = gpu.findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
-            if (match.matchedTokens > longestMatch.matchedTokens) {
-                longestPrefixGPU = &gpu;
-                longestMatch = match;
-            }
-            size_t idleCachedBlocks = 0;
-            for (size_t blockId : match.blockIds) {
-                if (gpu.isIdle(blockId)) {
-                    ++idleCachedBlocks;
-                }
-            }
-            size_t neededSlots = gpu.getBlocksForMemory(request->getNeededMemory(gpu)) + idleCachedBlocks;
-            if (neededSlots > gpu.availableSlots()) {
-                continue;
-            }
-            std::tuple<size_t, size_t> currentScore = {match.matchedTokens, gpu.availableSlots()};
-            if (bestGPU == nullptr || currentScore > bestScore) {
-                bestGPU = &gpu;
-                bestScore = currentScore;
-            }
-        }
-        if (bestGPU != nullptr) {
-            if (longestPrefixGPU != nullptr && longestMatch.matchedTokens > std::get<0>(bestScore)) {
-                bestGPU->copyMemoryFromOtherGPU(*longestPrefixGPU, longestMatch.blockIds);
-            }
-            request->reserveMemory(*bestGPU);
-            this->activeRequests.push_back(request);
-            this->waitingRequests[index] = nullptr; // Mark for removal     
-        }
-    }
-    for (auto it = this->waitingRequests.begin(); it != this->waitingRequests.end();) {
-        if ((*it) == nullptr) {
-            it = this->waitingRequests.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
-    for (auto it = this->activeRequests.begin(); it != this->activeRequests.end();) {
-        (*it)->act(
-    }
+    submitArrivedRequests();
+    admitWaitingRequests();
+    processActiveRequests();
+
     currentCycle++;
-    return true; // Continue processing
+    return true;
+}
+void Server::submitArrivedRequests() {
+
+}
+void Server::admitWaitingRequests() {
+
+}
+bool Server::tryAdmitRequest(Request* request) {
+    
+}
+void Server::processActiveRequests() {
+    
 }
