@@ -118,6 +118,9 @@ void Server::serve() {
     // summarize the results of the simulation (cycles, cache_hits, evictions)
 }
 bool Server::step() {
+    if (this->nonSubmittedRequests.empty() && this->waitingRequests.empty() && this->activeRequests.empty()) {
+        return false; // No more requests to process
+    }
     for (auto it = this->nonSubmittedRequests.begin(); it != this->nonSubmittedRequests.end();) {
         if ((*it)->getAdmissionCycle() == currentCycle) {
             this->waitingRequests.push_back(*it);
@@ -161,8 +164,23 @@ bool Server::step() {
         if (bestGPU != nullptr) {
             if (longestPrefixGPU != nullptr && longestMatch.matchedTokens > std::get<0>(bestScore)) {
                 bestGPU->copyMemoryFromOtherGPU(*longestPrefixGPU, longestMatch.blockIds);
-            }     
+            }
+            request->reserveMemory(*bestGPU);
+            this->activeRequests.push_back(request);
+            this->waitingRequests[index] = nullptr; // Mark for removal     
         }
     }
+    for (auto it = this->waitingRequests.begin(); it != this->waitingRequests.end();) {
+        if ((*it) == nullptr) {
+            it = this->waitingRequests.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+    for (auto it = this->activeRequests.begin(); it != this->activeRequests.end();) {
+        (*it)->act(
+    }
     currentCycle++;
+    return true; // Continue processing
 }
