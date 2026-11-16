@@ -159,8 +159,51 @@ void Server::admitWaitingRequests() {
     }
 }
 bool Server::tryAdmitRequest(Request* request) {
-    
-}
-void Server::processActiveRequests() {
+    GPU* bestGPU = nullptr;
+    std::tuple<size_t, size_t> bestScore = {0, 0};
+    GPU* longestPrefixGPU = nullptr;
+    PrefixMatch longestMatch = {0, {}};
 
+    for (GPU& gpu : this->gpus) {
+        PrefixMatch match = gpu.findLongestCachedPrefix(request->getModel().getId(),
+            request->getModel().getEmbeddingSize(), request->getCacheableTokens());
+        if (match.matchedTokens > longestMatch.matchedTokens) {
+            longestPrefixGPU = &gpu;
+            longestMatch = match;
+        }
+
+        size_t idleCachedBlocks = 0;
+        for (size_t blockId : match.blockIds) {
+            if (gpu.isIdle(blockId)) {
+                ++idleCachedBlocks;
+            }
+        }
+
+        size_t neededSlots = gpu.getBlocksForMemory(request->getNeededMemory(gpu)) + idleCachedBlocks;
+        if (neededSlots > gpu.availableSlots()) {
+            continue;
+        }
+
+        std::tuple<size_t, size_t> currentScore = {match.matchedTokens, gpu.availableSlots()};
+        if (bestGPU == nullptr || currentScore > bestScore) {
+            bestGPU = &gpu;
+            bestScore = currentScore;
+        }
+    }
+
+    if (bestGPU == nullptr) {
+        return false;
+    }
+
+    if (longestPrefixGPU != nullptr && longestMatch.matchedTokens > std::get<0>(bestScore)) {
+        bestGPU->copyMemoryFromOtherGPU(*longestPrefixGPU, longestMatch.blockIds);
+    }
+
+    request->reserveMemory(*bestGPU);
+    this->requestToGpu[request->getId()] = bestGPU - this->gpus.data();
+    this->activeRequests.push_back(request);
+    return true;
+}
+void Server::processActiveRequests(){
+    
 }
