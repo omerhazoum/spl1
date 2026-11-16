@@ -141,7 +141,22 @@ void Server::submitArrivedRequests() {
     }
 }
 void Server::admitWaitingRequests() {
+    const std::vector<const Request*> eligibleRequests(this->waitingRequests.begin(), this->waitingRequests.end());
+    std::vector<int> chosenIndices = this->policy->choose(eligibleRequests, this->gpus);
 
+    for (int index : chosenIndices) {
+        if (tryAdmitRequest(this->waitingRequests[index])) {
+            this->waitingRequests[index] = nullptr;
+        }
+    }
+
+    for (auto it = this->waitingRequests.begin(); it != this->waitingRequests.end();) {
+        if ((*it) == nullptr) {
+            it = this->waitingRequests.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 bool Server::tryAdmitRequest(Request* request) {
     
