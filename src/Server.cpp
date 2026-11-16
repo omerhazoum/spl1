@@ -74,26 +74,27 @@ Server::Server(std::string configPath) {
     for (const RequestConfig& r:JSONRead.requests)
     {
         const Model* foundModel = nullptr;
-       for (const Model* m : this->models) {
-       if (m->getId() == r.modelId) {  
-        foundModel = m;
-        break;
-    }
-}
-    if (r.type==RequestType::Generative)
-    {
-        this->nonSubmittedRequests.push_back(new GenerativeRequest(r.id,*foundModel,r.admissionCycle,r.prompt, r.scriptedOutput, r.maxOutputTokens));
-    }
-    else
-    {
-        this->nonSubmittedRequests.push_back(new EmbeddingRequest(r.id,*foundModel,r.admissionCycle,r.prompt));
-    }
-    if (JSONRead.policy == "arrival_order" || JSONRead.policy == "ArrivalOrderPolicy") {
-        this->policy = new ArrivalOrderPolicy();
-    } else if (JSONRead.policy == "shortest_job" || JSONRead.policy == "ShortestJobPolicy") {
-        this->policy = new ShortestJobPolicy();
-    } else if (JSONRead.policy == "longest_prefix" || JSONRead.policy == "LongestPrefixPolicy") {
-        this->policy = new LongestPrefixPolicy();
+        for (const Model* m : this->models) {
+            if (m->getId() == r.modelId) {  
+            foundModel = m;
+            break;
+            }
+        }
+        if (r.type==RequestType::Generative)
+        {
+            this->nonSubmittedRequests.push_back(new GenerativeRequest(r.id,*foundModel,r.admissionCycle,r.prompt, r.scriptedOutput, r.maxOutputTokens));
+        }
+        else
+        {
+            this->nonSubmittedRequests.push_back(new EmbeddingRequest(r.id,*foundModel,r.admissionCycle,r.prompt));
+        }
+        if (JSONRead.policy == "arrival_order" || JSONRead.policy == "ArrivalOrderPolicy") {
+            this->policy = new ArrivalOrderPolicy();
+        } else if (JSONRead.policy == "shortest_job" || JSONRead.policy == "ShortestJobPolicy") {
+            this->policy = new ShortestJobPolicy();
+        } else if (JSONRead.policy == "longest_prefix" || JSONRead.policy == "LongestPrefixPolicy") {
+            this->policy = new LongestPrefixPolicy();
+        }
     }
 }
 Server::~Server() {
@@ -120,7 +121,7 @@ bool Server::step() {
     for (auto it = this->nonSubmittedRequests.begin(); it != this->nonSubmittedRequests.end();) {
         if ((*it)->getAdmissionCycle() == currentCycle) {
             this->waitingRequests.push_back(*it);
-            this->nonSubmittedRequests.erase(it);
+            it = this->nonSubmittedRequests.erase(it);
         }
         else {
             ++it;
@@ -131,9 +132,37 @@ bool Server::step() {
     for (int index : chosenIndices) {
         Request* request = this->waitingRequests[index];
         GPU* bestGPU = nullptr;
+        std::tuple<size_t, size_t> bestScore = {0,0};
+        GPU* longestPrefixGPU = nullptr;
+        PrefixMatch longestMatch = {0, {}};
+
         for (GPU& gpu : this->gpus) {
-            PreFixMatch match = gpu.findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
-            
+            PrefixMatch match = gpu.findLongestCachedPrefix(request->getModel().getId(), request->getModel().getEmbeddingSize(), request->getCacheableTokens());
+            if (match.matchedTokens > longestMatch.matchedTokens) {
+                longestPrefixGPU = &gpu;
+                longestMatch = match;
+            }
+            size_t idleCachedBlocks = 0;
+            for (size_t blockId : match.blockIds) {
+                if (gpu.isIdle(blockId)) {
+                    ++idleCachedBlocks;
+                }
+            }
+            size_t neededSlots = gpu.getBlocksForMemory(request->getNeededMemory(gpu)) + idleCachedBlocks;
+            if (neededSlots > gpu.availableSlots()) {
+                continue;
+            }
+            std::tuple<size_t, size_t> currentScore = {match.matchedTokens, gpu.availableSlots()};
+            if (bestGPU == nullptr || currentScore > bestScore) {
+                bestGPU = &gpu;
+                bestScore = currentScore;
+            }
         }
+        if (bestGPU != nullptr) {
+            if (longestPrefixGPU != nullptr && longestMatch.matchedTokens > std::get<0>(bestScore)) {
+                bestGPU->copyMemoryFromOtherGPU(*longestPrefixGPU, longestMatch.blockIds);
+            }     
+        }
+    }
     currentCycle++;
 }
