@@ -40,6 +40,11 @@ class SchedulingPolicy;
 
 class Server{
 private:
+
+    // created by me
+    int currentCycle;
+    //
+    
     Config readConfig(std::string configPath) const;
 
     std::vector<GPU> gpus;
@@ -49,7 +54,6 @@ private:
     std::vector<Request*> activeRequests;
     SchedulingPolicy* policy;
 
-    int currentCycle;
 public:
     Server(std::string configPath);
     bool step();
