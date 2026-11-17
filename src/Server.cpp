@@ -6,6 +6,7 @@
 #include "Request.h"
 #include "SchedulingPolicy.h"
 #include <tuple>
+#include <iostream>
 
 using namespace std;
 using json = nlohmann::json;
@@ -90,11 +91,11 @@ Server::Server(std::string configPath) {
             this->nonSubmittedRequests.push_back(new EmbeddingRequest(r.id,*foundModel,r.admissionCycle,r.prompt));
         }
     }
-    if (JSONRead.policy == "arrival_order" || JSONRead.policy == "ArrivalOrderPolicy") {
+    if (JSONRead.policy == "arrivalOrder" || JSONRead.policy == "ArrivalOrderPolicy") {
         this->policy = new ArrivalOrderPolicy();
-    } else if (JSONRead.policy == "shortest_job" || JSONRead.policy == "ShortestJobPolicy") {
+    } else if (JSONRead.policy == "shortestJob" || JSONRead.policy == "ShortestJobPolicy") {
         this->policy = new ShortestJobPolicy();
-    } else if (JSONRead.policy == "longest_prefix" || JSONRead.policy == "LongestPrefixPolicy") {
+    } else if (JSONRead.policy == "longestPrefix" || JSONRead.policy == "LongestPrefixPolicy") {
         this->policy = new LongestPrefixPolicy();
     }
 }
@@ -116,7 +117,17 @@ Server::~Server() {
 }
 void Server::serve() {
     while (step());
-    // summarize the results of the simulation (cycles, cache_hits, evictions)
+    int totalCacheHits = 0;
+    int totalEvictions = 0;
+
+    for (const GPU& gpu : this->gpus) {
+        totalCacheHits += gpu.getCacheHits();
+        totalEvictions += gpu.getEvictions();
+    }
+    
+    std::cout << "summary: cycles=" << this->currentCycle
+              << " cache_hits=" << totalCacheHits
+              << " evictions=" << totalEvictions << std::endl;
 }
 bool Server::step() {
     if (this->nonSubmittedRequests.empty() && this->waitingRequests.empty() && this->activeRequests.empty()) {
@@ -132,8 +143,23 @@ bool Server::step() {
 }
 void Server::submitArrivedRequests() {
     for (auto it = this->nonSubmittedRequests.begin(); it != this->nonSubmittedRequests.end();) {
-        if ((*it)->getAdmissionCycle() == currentCycle) {
-            this->waitingRequests.push_back(*it);
+        Request* request = *it;
+        if (request->getAdmissionCycle() == this->currentCycle) {
+            bool canEverFit = false;
+            for (const GPU& gpu : this->gpus) {
+                if (gpu.getBlocksForMemory(request->getMaxNeededMemory()) <= gpu.getBlocksNum()) {
+                    canEverFit = true;
+                    break;
+                }
+            }
+
+            if (!canEverFit) {
+                std::cout << "rejected " << request->getId()
+                          << " cycle=" << this->currentCycle << std::endl;
+                delete request;
+            } else {
+                this->waitingRequests.push_back(request);
+            }
             it = this->nonSubmittedRequests.erase(it);
         } else {
             ++it;
@@ -213,6 +239,11 @@ void Server::processActiveRequests() {
         request->act(assignedGPU);
 
         if (request->finished()) {
+            std::cout << "finished " << request->getId()
+                      << " cycle=" << this->currentCycle
+                      << " gpu=" << gpuIndex
+                      << ": " << request->getOutput() << std::endl;
+
             request->deallocateMemory(assignedGPU);
             this->requestToGpu.erase(request->getId());
             delete request;

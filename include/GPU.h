@@ -18,6 +18,9 @@ public:
 
     // created by me
     bool isIdle(std::size_t slot) const;
+    std::size_t getCacheHits() const;
+    std::size_t getEvictions() const;
+    std::size_t getBlocksNum() const;
     //
     
     GPU(std::size_t blocksNum, std::size_t blockSize);
