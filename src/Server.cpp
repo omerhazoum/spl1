@@ -124,7 +124,7 @@ void Server::serve() {
         totalCacheHits += gpu.getCacheHits();
         totalEvictions += gpu.getEvictions();
     }
-    
+
     std::cout << "summary: cycles=" << this->currentCycle
               << " cache_hits=" << totalCacheHits
               << " evictions=" << totalEvictions << std::endl;
@@ -186,7 +186,9 @@ void Server::admitWaitingRequests() {
 }
 bool Server::tryAdmitRequest(Request* request) {
     GPU* bestGPU = nullptr;
-    std::tuple<size_t, size_t> bestScore = {0, 0};
+    size_t bestMatchedTokens = 0;
+    size_t bestNeededSlots = 0;
+
     GPU* longestPrefixGPU = nullptr;
     PrefixMatch longestMatch = {0, {}};
 
@@ -210,10 +212,11 @@ bool Server::tryAdmitRequest(Request* request) {
             continue;
         }
 
-        std::tuple<size_t, size_t> currentScore = {match.matchedTokens, gpu.availableSlots()};
-        if (bestGPU == nullptr || currentScore > bestScore) {
+        if (bestGPU == nullptr || match.matchedTokens > bestMatchedTokens ||
+            (match.matchedTokens == bestMatchedTokens && neededSlots < bestNeededSlots)) {
             bestGPU = &gpu;
-            bestScore = currentScore;
+            bestMatchedTokens = match.matchedTokens;
+            bestNeededSlots = neededSlots;
         }
     }
 
@@ -221,7 +224,7 @@ bool Server::tryAdmitRequest(Request* request) {
         return false;
     }
 
-    if (longestPrefixGPU != nullptr && longestMatch.matchedTokens > std::get<0>(bestScore)) {
+    if (longestPrefixGPU != nullptr && longestMatch.matchedTokens > bestMatchedTokens) {
         bestGPU->copyMemoryFromOtherGPU(*longestPrefixGPU, longestMatch.blockIds);
     }
 
