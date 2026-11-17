@@ -204,6 +204,21 @@ bool Server::tryAdmitRequest(Request* request) {
     this->activeRequests.push_back(request);
     return true;
 }
-void Server::processActiveRequests(){
-    
+void Server::processActiveRequests() {
+    for (auto it = this->activeRequests.begin(); it != this->activeRequests.end();) {
+        Request* request = *it;
+        size_t gpuIndex = this->requestToGpu[request->getId()];
+        GPU& assignedGPU = this->gpus[gpuIndex];
+
+        request->act(assignedGPU);
+
+        if (request->finished()) {
+            request->deallocateMemory(assignedGPU);
+            this->requestToGpu.erase(request->getId());
+            delete request;
+            it = this->activeRequests.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
