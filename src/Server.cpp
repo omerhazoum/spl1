@@ -5,7 +5,6 @@
 #include "Server.h"
 #include "Request.h"
 #include "SchedulingPolicy.h"
-#include <tuple>
 #include <iostream>
 
 using namespace std;
@@ -60,8 +59,9 @@ Config Server::readConfig(string configPath) const{
 
     return Config{blockSize, gpuConfigs, modelConfigs, requestConfigs, policy};
 }
-Server::Server(std::string configPath) {
-    this->currentCycle = 0;
+Server::Server(std::string configPath)
+    : gpus(), models(), nonSubmittedRequests(), waitingRequests(),
+      activeRequests(), policy(nullptr), currentCycle(0), requestToGpu() {
     Config JSONRead = readConfig(configPath);
     for(GPUConfig g:JSONRead.gpus)
     {
