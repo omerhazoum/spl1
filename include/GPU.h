@@ -4,8 +4,12 @@
 #include <string>
 #include <cstddef>
 #include <vector>
+#include <map>
+#include <utility>
+
 class GenerativeRequest;
 class EmbeddingRequest;
+class Request;
 struct PrefixMatch {
     std::size_t matchedTokens;
     std::vector<std::size_t> blockIds;
@@ -14,15 +18,15 @@ struct PrefixMatch {
 class MemoryBlock;
 
 class GPU{
-public:
-
-    // created by me
+public: 
     bool isIdle(std::size_t slot) const;
     std::size_t getCacheHits() const;
     std::size_t getEvictions() const;
-    std::size_t getBlocksNum() const;
-    //
-    
+   ~GPU();
+    GPU(const GPU& other);
+    GPU& operator=(const GPU& other);
+    GPU(GPU&& other) noexcept;
+    GPU& operator=(GPU&& other) noexcept;
     GPU(std::size_t blocksNum, std::size_t blockSize);
     std::size_t availableSlots() const;
     std::size_t getBlocksForMemory(std::size_t memory) const;
@@ -43,6 +47,11 @@ private:
     std::size_t blocksNum;
     std::size_t blockSize;
     std::vector<MemoryBlock*> memory;
+    std::size_t reservedSlots;
+    std::map<const Request*, std::size_t> requestReservations;
+    std::map<std::size_t, std::pair<std::string, std::vector<std::string>>> blockPrefixes;
+    std::size_t cacheHits;
+    std::size_t evictions;
 };
 
 #endif
