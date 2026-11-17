@@ -75,13 +75,7 @@ Server::Server(std::string configPath) {
     }
     for (const RequestConfig& r:JSONRead.requests)
     {
-        const Model* foundModel = nullptr;
-        for (const Model* m : this->models) {
-            if (m->getId() == r.modelId) {  
-            foundModel = m;
-            break;
-            }
-        }
+        const Model* foundModel = findModel(r.modelId);
         if (r.type==RequestType::Generative)
         {
             this->nonSubmittedRequests.push_back(new GenerativeRequest(r.id,*foundModel,r.admissionCycle,r.prompt, r.scriptedOutput, r.maxOutputTokens));
@@ -99,21 +93,108 @@ Server::Server(std::string configPath) {
         this->policy = new LongestPrefixPolicy();
     }
 }
-Server::~Server() {
-    
+void Server::clear() {
     for (Model* m : this->models) {
         delete m;
     }
+    this->models.clear();
+
     for (Request* r : this->nonSubmittedRequests) {
         delete r;
     }
+    this->nonSubmittedRequests.clear();
+
     for (Request* r : this->waitingRequests) {
         delete r;
     }
+    this->waitingRequests.clear();
+
     for (Request* r : this->activeRequests) {
         delete r;
     }
+    this->activeRequests.clear();
+
     delete this->policy;
+    this->policy = nullptr;
+
+    this->gpus.clear();
+    this->requestToGpu.clear();
+    this->currentCycle = 0;
+}
+const Model* Server::findModel(const std::string& modelId) const {
+    for (const Model* m : this->models) {
+        if (m->getId() == modelId) {
+            return m;
+        }
+    }
+    return nullptr;
+}
+void Server::copyFrom(const Server& other) {
+    this->currentCycle = other.currentCycle;
+    this->gpus = other.gpus;
+    this->requestToGpu = other.requestToGpu;
+    this->policy = (other.policy != nullptr) ? other.policy->clone() : nullptr;
+
+    for (const Model* m : other.models) {
+        this->models.push_back(new Model(*m));
+    }
+    for (const Request* r : other.nonSubmittedRequests) {
+        this->nonSubmittedRequests.push_back(r->clone(*findModel(r->getModel().getId())));
+    }
+    for (const Request* r : other.waitingRequests) {
+        this->waitingRequests.push_back(r->clone(*findModel(r->getModel().getId())));
+    }
+    for (const Request* r : other.activeRequests) {
+        this->activeRequests.push_back(r->clone(*findModel(r->getModel().getId())));
+    }
+}
+Server::~Server() {
+    clear();
+}
+
+Server::Server(const Server& other)
+    : gpus(), models(), nonSubmittedRequests(), waitingRequests(),
+      activeRequests(), policy(nullptr), currentCycle(0), requestToGpu() {
+    copyFrom(other);
+}
+
+Server& Server::operator=(const Server& other) {
+    if (this != &other) {
+        clear();
+        copyFrom(other);
+    }
+    return *this;
+}
+
+Server::Server(Server&& other) noexcept
+    : gpus(std::move(other.gpus)),
+      models(std::move(other.models)),
+      nonSubmittedRequests(std::move(other.nonSubmittedRequests)),
+      waitingRequests(std::move(other.waitingRequests)),
+      activeRequests(std::move(other.activeRequests)),
+      policy(other.policy),
+      currentCycle(other.currentCycle),
+      requestToGpu(std::move(other.requestToGpu)) {
+    other.policy = nullptr;
+    other.currentCycle = 0;
+}
+
+Server& Server::operator=(Server&& other) noexcept {
+    if (this != &other) {
+        clear();
+        this->gpus = std::move(other.gpus);
+        this->models = std::move(other.models);
+        this->nonSubmittedRequests = std::move(other.nonSubmittedRequests);
+        this->waitingRequests = std::move(other.waitingRequests);
+        this->activeRequests = std::move(other.activeRequests);
+        this->policy = other.policy;
+        this->currentCycle = other.currentCycle;
+        this->requestToGpu = std::move(other.requestToGpu);
+
+        other.policy = nullptr;
+        other.currentCycle = 0;
+    }
+    return *this;
 }
 void Server::serve() {
     while (step());

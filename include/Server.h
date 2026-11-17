@@ -41,16 +41,6 @@ class SchedulingPolicy;
 
 class Server{
 private:
-
-    // created by me
-    int currentCycle;
-    std::unordered_map<int, size_t> requestToGpu;
-    void submitArrivedRequests();
-    void admitWaitingRequests();
-    bool tryAdmitRequest(Request* request);
-    void processActiveRequests();
-    //
-
     Config readConfig(std::string configPath) const;
 
     std::vector<GPU> gpus;
@@ -60,8 +50,25 @@ private:
     std::vector<Request*> activeRequests;
     SchedulingPolicy* policy;
 
+    // created by me
+    int currentCycle;
+    std::unordered_map<int, size_t> requestToGpu;
+    void submitArrivedRequests();
+    void admitWaitingRequests();
+    bool tryAdmitRequest(Request* request);
+    void processActiveRequests();
+    void clear();
+    void copyFrom(const Server& other);
+    const Model* findModel(const std::string& modelId) const;
+    //
+    
 public:
     Server(std::string configPath);
+    ~Server();
+    Server(const Server& other);
+    Server& operator=(const Server& other);
+    Server(Server&& other) noexcept;
+    Server& operator=(Server&& other) noexcept;
     bool step();
     void serve();
 };
