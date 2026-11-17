@@ -4,6 +4,8 @@
 #include "Model.h"
 #include "Server.h"
 #include "Request.h"
+#include "SchedulingPolicy.h"
+#include <iostream>
 
 using namespace std;
 using json = nlohmann::json;
@@ -57,7 +59,9 @@ Config Server::readConfig(string configPath) const{
 
     return Config{blockSize, gpuConfigs, modelConfigs, requestConfigs, policy};
 }
-Server::Server(std::string configPath){
+Server::Server(std::string configPath)
+    : gpus(), models(), nonSubmittedRequests(), waitingRequests(),
+      activeRequests(), policy(nullptr), currentCycle(0), requestToGpu() {
     Config JSONRead = readConfig(configPath);
     for(GPUConfig g:JSONRead.gpus)
     {
@@ -71,21 +75,265 @@ Server::Server(std::string configPath){
     }
     for (const RequestConfig& r:JSONRead.requests)
     {
-        const Model* foundModel = nullptr;
-       for (const Model* m : this->models) {
-       if (m->getId() == r.modelId) {  
-        foundModel = m;
-        break;
+        const Model* foundModel = findModel(r.modelId);
+        if (r.type==RequestType::Generative)
+        {
+            this->nonSubmittedRequests.push_back(new GenerativeRequest(r.id,*foundModel,r.admissionCycle,r.prompt, r.scriptedOutput, r.maxOutputTokens));
+        }
+        else
+        {
+            this->nonSubmittedRequests.push_back(new EmbeddingRequest(r.id,*foundModel,r.admissionCycle,r.prompt));
+        }
+    }
+    if (JSONRead.policy == "arrivalOrder" || JSONRead.policy == "ArrivalOrderPolicy") {
+        this->policy = new ArrivalOrderPolicy();
+    } else if (JSONRead.policy == "shortestJob" || JSONRead.policy == "ShortestJobPolicy") {
+        this->policy = new ShortestJobPolicy();
+    } else if (JSONRead.policy == "longestPrefix" || JSONRead.policy == "LongestPrefixPolicy") {
+        this->policy = new LongestPrefixPolicy();
     }
 }
-       if (r.type==RequestType::Generative)
-       {
-        this->nonSubmittedRequests.push_back(new GenerativeRequest(r.id,*foundModel,r.admissionCycle,r.prompt, r.scriptedOutput, r.maxOutputTokens));
-       }
-       else{
-        this->nonSubmittedRequests.push_back(new EmbeddingRequest(r.id,*foundModel,r.admissionCycle,r.prompt));
-       }
+void Server::clear() {
+    for (Model* m : this->models) {
+        delete m;
+    }
+    this->models.clear();
+
+    for (Request* r : this->nonSubmittedRequests) {
+        delete r;
+    }
+    this->nonSubmittedRequests.clear();
+
+    for (Request* r : this->waitingRequests) {
+        delete r;
+    }
+    this->waitingRequests.clear();
+
+    for (Request* r : this->activeRequests) {
+        delete r;
+    }
+    this->activeRequests.clear();
+
+    delete this->policy;
+    this->policy = nullptr;
+
+    this->gpus.clear();
+    this->requestToGpu.clear();
+    this->currentCycle = 0;
+}
+const Model* Server::findModel(const std::string& modelId) const {
+    for (const Model* m : this->models) {
+        if (m->getId() == modelId) {
+            return m;
+        }
+    }
+    return nullptr;
+}
+void Server::copyFrom(const Server& other) {
+    this->currentCycle = other.currentCycle;
+    this->gpus = other.gpus;
+    this->requestToGpu = other.requestToGpu;
+    this->policy = (other.policy != nullptr) ? other.policy->clone() : nullptr;
+
+    for (const Model* m : other.models) {
+        this->models.push_back(new Model(*m));
+    }
+    for (const Request* r : other.nonSubmittedRequests) {
+        this->nonSubmittedRequests.push_back(r->clone(*findModel(r->getModel().getId())));
+    }
+    for (const Request* r : other.waitingRequests) {
+        this->waitingRequests.push_back(r->clone(*findModel(r->getModel().getId())));
+    }
+    for (const Request* r : other.activeRequests) {
+        this->activeRequests.push_back(r->clone(*findModel(r->getModel().getId())));
     }
 }
-void Server::serve() {}
-bool Server::step() {return false;}
+Server::~Server() {
+    clear();
+}
+
+Server::Server(const Server& other)
+    : gpus(), models(), nonSubmittedRequests(), waitingRequests(),
+      activeRequests(), policy(nullptr), currentCycle(0), requestToGpu() {
+    copyFrom(other);
+}
+
+Server& Server::operator=(const Server& other) {
+    if (this != &other) {
+        clear();
+        copyFrom(other);
+    }
+    return *this;
+}
+
+Server::Server(Server&& other) noexcept
+    : gpus(std::move(other.gpus)),
+      models(std::move(other.models)),
+      nonSubmittedRequests(std::move(other.nonSubmittedRequests)),
+      waitingRequests(std::move(other.waitingRequests)),
+      activeRequests(std::move(other.activeRequests)),
+      policy(other.policy),
+      currentCycle(other.currentCycle),
+      requestToGpu(std::move(other.requestToGpu)) {
+    other.policy = nullptr;
+    other.currentCycle = 0;
+}
+
+Server& Server::operator=(Server&& other) noexcept {
+    if (this != &other) {
+        clear();
+        this->gpus = std::move(other.gpus);
+        this->models = std::move(other.models);
+        this->nonSubmittedRequests = std::move(other.nonSubmittedRequests);
+        this->waitingRequests = std::move(other.waitingRequests);
+        this->activeRequests = std::move(other.activeRequests);
+        this->policy = other.policy;
+        this->currentCycle = other.currentCycle;
+        this->requestToGpu = std::move(other.requestToGpu);
+
+        other.policy = nullptr;
+        other.currentCycle = 0;
+    }
+    return *this;
+}
+void Server::serve() {
+    while (step());
+    int totalCacheHits = 0;
+    int totalEvictions = 0;
+
+    for (const GPU& gpu : this->gpus) {
+        totalCacheHits += gpu.getCacheHits();
+        totalEvictions += gpu.getEvictions();
+    }
+
+    std::cout << "summary: cycles=" << this->currentCycle
+              << " cache_hits=" << totalCacheHits
+              << " evictions=" << totalEvictions << std::endl;
+}
+bool Server::step() {
+    if (this->nonSubmittedRequests.empty() && this->waitingRequests.empty() && this->activeRequests.empty()) {
+        return false; // No more requests to process
+    }
+
+    submitArrivedRequests();
+    admitWaitingRequests();
+    processActiveRequests();
+
+    currentCycle++;
+    return true;
+}
+void Server::submitArrivedRequests() {
+    for (auto it = this->nonSubmittedRequests.begin(); it != this->nonSubmittedRequests.end();) {
+        Request* request = *it;
+        if (request->getAdmissionCycle() == this->currentCycle) {
+            bool canEverFit = false;
+            for (const GPU& gpu : this->gpus) {
+                if (gpu.getBlocksForMemory(request->getMaxNeededMemory()) <= gpu.getBlocksNum()) {
+                    canEverFit = true;
+                    break;
+                }
+            }
+
+            if (!canEverFit) {
+                std::cout << "rejected " << request->getId()
+                          << " cycle=" << this->currentCycle << std::endl;
+                delete request;
+            } else {
+                this->waitingRequests.push_back(request);
+            }
+            it = this->nonSubmittedRequests.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+void Server::admitWaitingRequests() {
+    const std::vector<const Request*> eligibleRequests(this->waitingRequests.begin(), this->waitingRequests.end());
+    std::vector<int> chosenIndices = this->policy->choose(eligibleRequests, this->gpus);
+
+    for (int index : chosenIndices) {
+        if (tryAdmitRequest(this->waitingRequests[index])) {
+            this->waitingRequests[index] = nullptr;
+        }
+    }
+
+    for (auto it = this->waitingRequests.begin(); it != this->waitingRequests.end();) {
+        if ((*it) == nullptr) {
+            it = this->waitingRequests.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+bool Server::tryAdmitRequest(Request* request) {
+    GPU* bestGPU = nullptr;
+    size_t bestMatchedTokens = 0;
+    size_t bestNeededSlots = 0;
+
+    GPU* longestPrefixGPU = nullptr;
+    PrefixMatch longestMatch = {0, {}};
+
+    for (GPU& gpu : this->gpus) {
+        PrefixMatch match = gpu.findLongestCachedPrefix(request->getModel().getId(),
+            request->getModel().getEmbeddingSize(), request->getCacheableTokens());
+        if (match.matchedTokens > longestMatch.matchedTokens) {
+            longestPrefixGPU = &gpu;
+            longestMatch = match;
+        }
+
+        size_t idleCachedBlocks = 0;
+        for (size_t blockId : match.blockIds) {
+            if (gpu.isIdle(blockId)) {
+                ++idleCachedBlocks;
+            }
+        }
+
+        size_t neededSlots = gpu.getBlocksForMemory(request->getNeededMemory(gpu)) + idleCachedBlocks;
+        if (neededSlots > gpu.availableSlots()) {
+            continue;
+        }
+
+        if (bestGPU == nullptr || match.matchedTokens > bestMatchedTokens ||
+            (match.matchedTokens == bestMatchedTokens && neededSlots < bestNeededSlots)) {
+            bestGPU = &gpu;
+            bestMatchedTokens = match.matchedTokens;
+            bestNeededSlots = neededSlots;
+        }
+    }
+
+    if (bestGPU == nullptr) {
+        return false;
+    }
+
+    if (longestPrefixGPU != nullptr && longestMatch.matchedTokens > bestMatchedTokens) {
+        bestGPU->copyMemoryFromOtherGPU(*longestPrefixGPU, longestMatch.blockIds);
+    }
+
+    request->reserveMemory(*bestGPU);
+    this->requestToGpu[request->getId()] = bestGPU - this->gpus.data();
+    this->activeRequests.push_back(request);
+    return true;
+}
+void Server::processActiveRequests() {
+    for (auto it = this->activeRequests.begin(); it != this->activeRequests.end();) {
+        Request* request = *it;
+        size_t gpuIndex = this->requestToGpu[request->getId()];
+        GPU& assignedGPU = this->gpus[gpuIndex];
+
+        request->act(assignedGPU);
+
+        if (request->finished()) {
+            std::cout << "finished " << request->getId()
+                      << " cycle=" << this->currentCycle
+                      << " gpu=" << gpuIndex
+                      << ": " << request->getOutput() << std::endl;
+
+            request->deallocateMemory(assignedGPU);
+            this->requestToGpu.erase(request->getId());
+            delete request;
+            it = this->activeRequests.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}

@@ -5,6 +5,7 @@
 #include <string>
 #include "Request.h"
 #include "GPU.h"
+#include <unordered_map>
 
 struct GPUConfig{
     std::size_t memoryBytes;
@@ -48,8 +49,23 @@ private:
     std::vector<Request*> waitingRequests;
     std::vector<Request*> activeRequests;
     SchedulingPolicy* policy;
+    int currentCycle;
+    std::unordered_map<int, size_t> requestToGpu;
+    void submitArrivedRequests();
+    void admitWaitingRequests();
+    bool tryAdmitRequest(Request* request);
+    void processActiveRequests();
+    void clear();
+    void copyFrom(const Server& other);
+    const Model* findModel(const std::string& modelId) const;
+    
 public:
     Server(std::string configPath);
+    ~Server();
+    Server(const Server& other);
+    Server& operator=(const Server& other);
+    Server(Server&& other) noexcept;
+    Server& operator=(Server&& other) noexcept;
     bool step();
     void serve();
 };
