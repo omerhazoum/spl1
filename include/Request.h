@@ -36,20 +36,9 @@ public:
 
 class GenerativeRequest: public Request{
 private:
-
-    // created by me
-    int assignedGpuId = -1;
-    //
-
     std::string scriptedOutput;
     std::size_t maxOutputTokens;
 public:
-
-    // created by me
-    void setGpuId(int id) { this->assignedGpuId = id; }
-    int getGpuId() const { return this->assignedGpuId; }
-    //
-    
     GenerativeRequest(int id, const Model& model, int admissionCycle, std::string prompt, std::string scriptedOutput,
     std::size_t maxOutputTokens);
     std::size_t getNeededMemory(const GPU& gpu) const override;
