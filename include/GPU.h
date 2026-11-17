@@ -22,6 +22,7 @@ public:
     bool isIdle(std::size_t slot) const;
     std::size_t getCacheHits() const;
     std::size_t getEvictions() const;
+    std::size_t getBlockNum() const;
    ~GPU();
     GPU(const GPU& other);
     GPU& operator=(const GPU& other);

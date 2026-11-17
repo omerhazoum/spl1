@@ -24,6 +24,8 @@ size_t GPU::getCacheHits() const { return cacheHits; }
 
 size_t GPU::getEvictions() const { return evictions; }
 
+std::size_t GPU::getBlockNum() const { return blocksNum; }
+
  std::size_t GPU::availableSlots() const{
     std::size_t active = 0;
     for (const MemoryBlock* block : memory) {

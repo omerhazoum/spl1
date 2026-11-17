@@ -228,7 +228,7 @@ void Server::submitArrivedRequests() {
         if (request->getAdmissionCycle() == this->currentCycle) {
             bool canEverFit = false;
             for (const GPU& gpu : this->gpus) {
-                if (gpu.getBlocksForMemory(request->getMaxNeededMemory()) <= gpu.getBlocksNum()) {
+                if (gpu.getBlocksForMemory(request->getMaxNeededMemory()) <= gpu.getBlockNum()) {
                     canEverFit = true;
                     break;
                 }
