@@ -49,8 +49,6 @@ private:
     std::vector<Request*> waitingRequests;
     std::vector<Request*> activeRequests;
     SchedulingPolicy* policy;
-
-    // created by me
     int currentCycle;
     std::unordered_map<int, size_t> requestToGpu;
     void submitArrivedRequests();
@@ -60,7 +58,6 @@ private:
     void clear();
     void copyFrom(const Server& other);
     const Model* findModel(const std::string& modelId) const;
-    //
     
 public:
     Server(std::string configPath);
