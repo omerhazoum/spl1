@@ -57,5 +57,10 @@ string EmbeddingRequest::getOutput() const {
     return output;
 }
 void EmbeddingRequest::reserveMemory(GPU& gpu) {
-    gpu.reserve(this->getMaxNeededMemory(), *this);
+    reservedBlocks = gpu.getBlocksForMemory(getMaxNeededMemory());
+    gpu.reserve(reservedBlocks, *this);
+    for (size_t i = 0; i < reservedBlocks; ++i) {
+        size_t blockId = gpu.allocateBlock(*this);
+        memoryBlocks.push_back(blockId);
+    }
 }
