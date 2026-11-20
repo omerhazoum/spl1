@@ -25,5 +25,9 @@ int Request::getAdmissionCycle() const {
     return admissionCycle;
 }
 void Request::deallocateMemory(GPU& gpu) {
-    
+    gpu.unreserve(this->getNeedToUnreserve(), *this);
+    for (size_t blockId : memoryBlocks) {
+        gpu.release(blockId);
+    }
+    memoryBlocks.clear();
 }
