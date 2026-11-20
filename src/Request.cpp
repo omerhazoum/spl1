@@ -64,3 +64,35 @@ void EmbeddingRequest::reserveMemory(GPU& gpu) {
         memoryBlocks.push_back(blockId);
     }
 }
+void EmbeddingRequest::act(GPU& gpu) {
+    if (finished()) {
+        return;
+    }
+    size_t offset, scratch;
+    if (memoryBlocks.size() == 1) {
+        offset = model.getEmbeddingSize();
+        scratch = 0;
+    }
+    else {
+        offset = 0;
+        scratch = 1;
+    }
+    model.generateTokenEmbedding({tokens[currentTokenIndex]}, gpu, memoryBlocks[scratch], offset);
+    for (size_t i = 0; i < model.getEmbeddingSize(); ++i) {
+        int newValue = gpu.readFromBlock(memoryBlocks[scratch], offset + i);
+        int ValueSum = gpu.readFromBlock(memoryBlocks[0], i);
+        gpu.writeToBlock(memoryBlocks[0], i, ValueSum + newValue);
+    }
+    ++currentTokenIndex;
+    if (finished()) {
+        output = "[";
+        for (size_t i = 0; i < model.getEmbeddingSize(); ++i) {
+            int finalValue = gpu.readFromBlock(memoryBlocks[0], i);
+            output += std::to_string(finalValue/(static_cast<int>(currentTokenIndex)));
+            if (i < model.getEmbeddingSize() - 1) {
+                output += ", ";
+            }
+        }
+        output += "]";
+    }
+}
