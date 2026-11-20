@@ -54,6 +54,9 @@ public:
 };
 
 class EmbeddingRequest: public Request{
+private:
+    std::size_t currentTokenIndex;
+    std::string output;
 public:
     EmbeddingRequest(int id, const Model& model, int admissionCycle, std::string prompt);
     std::size_t getNeededMemory(const GPU& gpu) const override;

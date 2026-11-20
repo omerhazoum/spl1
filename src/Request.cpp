@@ -31,3 +31,7 @@ void Request::deallocateMemory(GPU& gpu) {
     }
     memoryBlocks.clear();
 }
+
+EmbeddingRequest::EmbeddingRequest(int id, const Model& model, int admissionCycle, std::string prompt)
+    : Request(id, model, admissionCycle, prompt), currentTokenIndex(0), output() {}
+
