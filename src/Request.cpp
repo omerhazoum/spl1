@@ -39,6 +39,9 @@ void Request::deallocateMemory(GPU& gpu) {
 EmbeddingRequest::EmbeddingRequest(int id, const Model& model, int admissionCycle, string prompt)
     : Request(id, model, admissionCycle, prompt), currentTokenIndex(0), output() {}
 
+EmbeddingRequest::EmbeddingRequest(const EmbeddingRequest& other, const Model& model)
+    : Request(other, model), currentTokenIndex(other.currentTokenIndex), output(other.output) {}
+
 size_t EmbeddingRequest::getNeededMemory(const GPU&) const {
     return 2*this->getModel().getEmbeddingSize();
 }
@@ -103,5 +106,3 @@ void EmbeddingRequest::act(GPU& gpu) {
 Request* EmbeddingRequest::clone(const Model& model) const {
     return new EmbeddingRequest(*this, model);
 }
-EmbeddingRequest::EmbeddingRequest(const EmbeddingRequest& other, const Model& model)
-    : Request(other, model), currentTokenIndex(other.currentTokenIndex), output(other.output) {}
