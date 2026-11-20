@@ -15,6 +15,7 @@ protected:
     std::vector<std::string> tokens;
     std::vector<std::size_t> memoryBlocks;
     std::size_t reservedBlocks;
+    Request(const Request& other, const Model& model);
 public:
     Request(int id, const Model& model, int admissionCycle, std::string prompt);
     virtual std::size_t getNeededMemory(const GPU& gpu) const=0;
@@ -58,6 +59,7 @@ private:
     std::size_t currentTokenIndex;
     std::string output;
 public:
+    EmbeddingRequest(const EmbeddingRequest& other, const Model& model);
     EmbeddingRequest(int id, const Model& model, int admissionCycle, std::string prompt);
     std::size_t getNeededMemory(const GPU& gpu) const override;
     std::size_t getMaxNeededMemory() const override;

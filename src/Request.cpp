@@ -15,6 +15,10 @@ Request::Request(int id, const Model& model, int admissionCycle, string prompt)
     : id(id), model(model), admissionCycle(admissionCycle),
     tokens(model.tokenizer(prompt)), memoryBlocks(), reservedBlocks(0) {}
 
+Request::Request(const Request& other, const Model& model)
+    : id(other.id), model(model), admissionCycle(other.admissionCycle),
+    tokens(other.tokens), memoryBlocks(other.memoryBlocks), reservedBlocks(other.reservedBlocks) {}
+
 int Request::getId() const {
     return id;
 }
@@ -96,3 +100,8 @@ void EmbeddingRequest::act(GPU& gpu) {
         output += "]";
     }
 }
+Request* EmbeddingRequest::clone(const Model& model) const {
+    return new EmbeddingRequest(*this, model);
+}
+EmbeddingRequest::EmbeddingRequest(const EmbeddingRequest& other, const Model& model)
+    : Request(other, model), currentTokenIndex(other.currentTokenIndex), output(other.output) {}
