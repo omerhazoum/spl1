@@ -35,7 +35,7 @@ void Request::deallocateMemory(GPU& gpu) {
 EmbeddingRequest::EmbeddingRequest(int id, const Model& model, int admissionCycle, string prompt)
     : Request(id, model, admissionCycle, prompt), currentTokenIndex(0), output() {}
 
-size_t EmbeddingRequest::getNeededMemory(const GPU& gpu) const {
+size_t EmbeddingRequest::getNeededMemory(const GPU&) const {
     return 2*this->getModel().getEmbeddingSize();
 }
 size_t EmbeddingRequest::getMaxNeededMemory() const {
@@ -51,8 +51,11 @@ void EmbeddingRequest::allocateOneBlock(GPU& gpu, size_t slot) const {
     gpu.addMemoryBlock(*this, slot);
 }
 bool EmbeddingRequest::finished() const {
-    return currentTokenIndex == tokens.size();
+    return currentTokenIndex >= tokens.size();
 }
 string EmbeddingRequest::getOutput() const {
     return output;
+}
+void EmbeddingRequest::reserveMemory(GPU& gpu) {
+    gpu.reserve(this->getMaxNeededMemory(), *this);
 }
