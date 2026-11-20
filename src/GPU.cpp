@@ -13,10 +13,10 @@
 using namespace std;
 using json = nlohmann::json;
 
-GPU::GPU(std::size_t blocksNum, std::size_t blockSize)
+GPU::GPU(size_t blocksNum, size_t blockSize)
     : blocksNum(blocksNum), blockSize(blockSize), memory(blocksNum, nullptr), reservedSlots(0), requestReservations(), blockPrefixes(), cacheHits(0), evictions(0) {}
 
-bool GPU::isIdle(std::size_t slot) const {
+bool GPU::isIdle(size_t slot) const {
     return ((memory[slot] != nullptr) && (memory[slot]->getRefCount() == 0));
 }
 
@@ -24,10 +24,10 @@ size_t GPU::getCacheHits() const { return cacheHits; }
 
 size_t GPU::getEvictions() const { return evictions; }
 
-std::size_t GPU::getBlockNum() const { return blocksNum; }
+size_t GPU::getBlockNum() const { return blocksNum; }
 
- std::size_t GPU::availableSlots() const{
-    std::size_t active = 0;
+ size_t GPU::availableSlots() const{
+    size_t active = 0;
     for (const MemoryBlock* block : memory) {
         if (block != nullptr&& block->getRefCount() > 0) {
             active++;
@@ -36,19 +36,19 @@ std::size_t GPU::getBlockNum() const { return blocksNum; }
     return blocksNum - active - reservedSlots;
  }    
 
-std::size_t GPU::getBlocksForMemory(std::size_t memory) const {
+size_t GPU::getBlocksForMemory(size_t memory) const {
     if (memory == 0|| blockSize == 0) {
         return 0;
     }
     return (memory + blockSize - 1) / blockSize;
 }
 
- void GPU::reserve(std::size_t n, const Request& request) {
+ void GPU::reserve(size_t n, const Request& request) {
     requestReservations[&request] += n;
     reservedSlots += n;
 }
 
- void GPU::unreserve(std::size_t n, const Request& request) {
+ void GPU::unreserve(size_t n, const Request& request) {
     if (requestReservations.count(&request) == 0) {
         return;
     }
@@ -62,14 +62,14 @@ std::size_t GPU::getBlocksForMemory(std::size_t memory) const {
     }
 }
 
-std::size_t GPU::allocateBlock(const Request& request){
+size_t GPU::allocateBlock(const Request& request){
     if(requestReservations.count(&request) == 0||requestReservations[&request] == 0){
         throw std::runtime_error("missing key or invalid reservations number");
         //check whether needed or not!!!
     }
-    std::size_t firstSlotEmpty;
+    size_t firstSlotEmpty;
     bool found = false;
-    for(std::size_t i=0;i<memory.size()&&(!found);i++)
+    for(size_t i=0;i<memory.size()&&(!found);i++)
     {
         if(memory[i]==nullptr)
         {
@@ -77,7 +77,7 @@ std::size_t GPU::allocateBlock(const Request& request){
             found = true;
         }
     }
-     for(std::size_t i=0;i<memory.size()&&(!found);i++)
+     for(size_t i=0;i<memory.size()&&(!found);i++)
     {
         if(memory[i] != nullptr && memory[i]->getRefCount() == 0)
         {
