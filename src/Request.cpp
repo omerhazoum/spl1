@@ -13,7 +13,7 @@ using json = nlohmann::json;
 
 Request::Request(int id, const Model& model, int admissionCycle, string prompt)
     : id(id), model(model), admissionCycle(admissionCycle),
-    tokens(model.tokenizer(prompt)), reservedBlocks(0) {}
+    tokens(model.tokenizer(prompt)), memoryBlocks(), reservedBlocks(0) {}
 
 int Request::getId() const {
     return id;
