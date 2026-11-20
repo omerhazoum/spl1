@@ -26,6 +26,8 @@ size_t GPU::getEvictions() const { return evictions; }
 
 size_t GPU::getBlockNum() const { return blocksNum; }
 
+size_t GPU::getBlockSize() const { return blockSize; }
+
  size_t GPU::availableSlots() const{
     size_t active = 0;
     for (const MemoryBlock* block : memory) {

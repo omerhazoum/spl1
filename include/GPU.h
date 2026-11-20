@@ -23,6 +23,7 @@ public:
     std::size_t getCacheHits() const;
     std::size_t getEvictions() const;
     std::size_t getBlockNum() const;
+    std::size_t getBlockSize() const;
    ~GPU();
     GPU(const GPU& other);
     GPU& operator=(const GPU& other);
