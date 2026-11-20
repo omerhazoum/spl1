@@ -32,6 +32,27 @@ void Request::deallocateMemory(GPU& gpu) {
     memoryBlocks.clear();
 }
 
-EmbeddingRequest::EmbeddingRequest(int id, const Model& model, int admissionCycle, std::string prompt)
+EmbeddingRequest::EmbeddingRequest(int id, const Model& model, int admissionCycle, string prompt)
     : Request(id, model, admissionCycle, prompt), currentTokenIndex(0), output() {}
 
+size_t EmbeddingRequest::getNeededMemory(const GPU& gpu) const {
+    return 2*this->getModel().getEmbeddingSize();
+}
+size_t EmbeddingRequest::getMaxNeededMemory() const {
+    return 2*this->getModel().getEmbeddingSize();
+}
+vector<string> EmbeddingRequest::getCacheableTokens() const {
+    return {};
+}
+size_t EmbeddingRequest::getNeedToUnreserve() const {
+    return 0;
+}
+void EmbeddingRequest::allocateOneBlock(GPU& gpu, size_t slot) const {
+    gpu.addMemoryBlock(*this, slot);
+}
+bool EmbeddingRequest::finished() const {
+    return currentTokenIndex == tokens.size();
+}
+string EmbeddingRequest::getOutput() const {
+    return output;
+}
