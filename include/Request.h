@@ -39,6 +39,7 @@ class GenerativeRequest: public Request{
 private:
     std::string scriptedOutput;
     std::size_t maxOutputTokens;
+    std::size_t currentTokenIndex;
     std::size_t usedBlocks;
 public:
     GenerativeRequest(int id, const Model& model, int admissionCycle, std::string prompt, std::string scriptedOutput,
