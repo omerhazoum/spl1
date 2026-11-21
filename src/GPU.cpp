@@ -242,7 +242,7 @@ GPU::GPU(const GPU& other): blocksNum(other.blocksNum),
         if(other.memory[i]!=nullptr)
         {
             this->memory[i] = other.memory[i]->clone();
-            for (size_t r = 0; r < other.memory[i]->getRefCount(); r++) {
+            for (int r = 0; r < other.memory[i]->getRefCount(); r++) {
                 this->memory[i]->acquire();
             }
         }
@@ -269,7 +269,7 @@ GPU& GPU::operator=(const GPU& other){
         if(other.memory[i]!=nullptr)
         {
             this->memory[i] = other.memory[i]->clone();
-            for (size_t r = 0; r < other.memory[i]->getRefCount(); r++) {
+            for (int r = 0; r < other.memory[i]->getRefCount(); r++) {
                 this->memory[i]->acquire();
             }
         }
