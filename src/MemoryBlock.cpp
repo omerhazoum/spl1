@@ -46,3 +46,19 @@ MemoryBlock& MemoryBlock::operator=(MemoryBlock&& other) noexcept {
     }
     return *this;
 }
+int MemoryBlock::readFromBlock(std::size_t offset) const {
+    return data[offset];
+}
+void MemoryBlock::writeToBlock(std::size_t offset, int value) {
+    data[offset] = value;
+}
+void MemoryBlock::acquire() {
+    ++refCount;
+}
+IdleAction MemoryBlock::release() {
+    --refCount;
+    if (refCount == 0) {
+        return onLastRelease();
+    }
+    return IdleAction::KeepCached;
+}
