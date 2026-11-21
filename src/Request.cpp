@@ -20,6 +20,7 @@ Request::Request(const Request& other, const Model& model)
 Request::~Request() {
     // Memory deallocation is handled by the GPU, so we don't need to do anything here.
 }
+
 int Request::getId() const {
     return id;
 }
