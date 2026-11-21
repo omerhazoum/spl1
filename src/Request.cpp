@@ -176,3 +176,13 @@ void GenerativeRequest::act(GPU& gpu) {
         gpu.assignPrefixToBlock(memoryBlocks.back(), currentPrefix, model.getId());
     }
 }
+string GenerativeRequest::getOutput() const {
+    string output;
+    for (size_t i = 0; i < tokenizedOutput.size(); ++i) {
+        if (i > 0) {
+            output += " ";
+        }
+        output += tokenizedOutput[i];
+    }
+    return output;
+}
