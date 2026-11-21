@@ -42,6 +42,7 @@ private:
     std::size_t currentTokenIndex;
     std::size_t usedBlocks;
     std::vector<std::string> tokenizedOutput;
+    std::vector<std::string> currentPrefix;
 public:
     GenerativeRequest(int id, const Model& model, int admissionCycle, std::string prompt, std::string scriptedOutput,
     std::size_t maxOutputTokens);

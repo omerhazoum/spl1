@@ -109,8 +109,8 @@ Request* EmbeddingRequest::clone(const Model& model) const {
 
 GenerativeRequest::GenerativeRequest(int id, const Model& model, int admissionCycle,
     string prompt, string scriptedOutput, size_t maxOutputTokens)
-    : Request(id, model, admissionCycle, prompt), scriptedOutput(scriptedOutput),
-    maxOutputTokens(maxOutputTokens), currentTokenIndex(0), usedBlocks(0), tokenizedOutput(model.tokenizer(scriptedOutput)) {
+    : Request(id, model, admissionCycle, prompt), scriptedOutput(scriptedOutput), maxOutputTokens(maxOutputTokens),
+    currentTokenIndex(0), usedBlocks(0), tokenizedOutput(model.tokenizer(scriptedOutput)), currentPrefix() {
         while (tokenizedOutput.size() > maxOutputTokens) {
             tokenizedOutput.pop_back();
         }
@@ -139,6 +139,9 @@ void GenerativeRequest::reserveMemory(GPU& gpu) {
         memoryBlocks.push_back(slot);
         gpu.acquire(slot);
     }
+    for (size_t i = 0; i < match.matchedTokens; ++i) {
+        currentPrefix.push_back(tokens[i]);
+    }
     currentTokenIndex = match.matchedTokens;
     reservedBlocks = gpu.getBlocksForMemory(
         model.getEmbeddingSize() * (tokens.size() - match.matchedTokens + maxOutputTokens)
@@ -147,4 +150,29 @@ void GenerativeRequest::reserveMemory(GPU& gpu) {
 }
 bool GenerativeRequest::finished() const {
     return currentTokenIndex >= (tokens.size() + tokenizedOutput.size());
+}
+void GenerativeRequest::act(GPU& gpu) {
+    if (finished()) {
+        return;
+    }
+    string currentToken;
+    if (currentTokenIndex < tokens.size()) {
+        currentToken = tokens[currentTokenIndex];
+    }
+    else {
+        currentToken = tokenizedOutput[currentTokenIndex - tokens.size()];
+    }
+    currentPrefix.push_back(currentToken);
+    size_t tokensPerBlock = gpu.getBlockSize() / model.getEmbeddingSize();
+    size_t posInBlock = currentTokenIndex % tokensPerBlock;
+    if (posInBlock == 0) {
+        size_t newBlockId = gpu.allocateBlock(*this);
+        memoryBlocks.push_back(newBlockId);
+        ++usedBlocks;
+    }
+    model.generateTokenEmbedding(currentPrefix, gpu, memoryBlocks.back(), posInBlock * model.getEmbeddingSize());
+    ++currentTokenIndex;
+    if (currentTokenIndex % tokensPerBlock == 0) {
+        gpu.assignPrefixToBlock(memoryBlocks.back(), currentPrefix, model.getId());
+    }
 }
