@@ -62,3 +62,19 @@ IdleAction MemoryBlock::release() {
     }
     return IdleAction::KeepCached;
 }
+
+KVBlock::KVBlock(size_t size): MemoryBlock(size) {}
+IdleAction KVBlock::onLastRelease() const {
+    return IdleAction::KeepCached;
+}
+MemoryBlock* KVBlock::clone() const {
+    return new KVBlock(*this);
+}
+
+EmbeddingWorkspace::EmbeddingWorkspace(size_t size): MemoryBlock(size) {}
+IdleAction EmbeddingWorkspace::onLastRelease() const {
+    return IdleAction::Destroy;
+}
+MemoryBlock* EmbeddingWorkspace::clone() const {
+    return new EmbeddingWorkspace(*this);
+}
