@@ -106,3 +106,22 @@ void EmbeddingRequest::act(GPU& gpu) {
 Request* EmbeddingRequest::clone(const Model& model) const {
     return new EmbeddingRequest(*this, model);
 }
+
+GenerativeRequest::GenerativeRequest(int id, const Model& model, int admissionCycle, string prompt, string scriptedOutput,
+    size_t maxOutputTokens)
+    : Request(id, model, admissionCycle, prompt), scriptedOutput(scriptedOutput), maxOutputTokens(maxOutputTokens) {}
+
+size_t GenerativeRequest::getNeededMemory(const GPU& gpu) const {
+    PrefixMatch match = gpu.findLongestCachedPrefix(model.getId(), model.getEmbeddingSize(), tokens);
+    size_t matchedTokens = match.matchedTokens;
+    return model.getEmbeddingSize()*(tokens.size() - matchedTokens + maxOutputTokens);
+}
+size_t GenerativeRequest::getMaxNeededMemory() const {
+    return model.getEmbeddingSize()*(tokens.size() + maxOutputTokens);
+}
+vector<string> GenerativeRequest::getCacheableTokens() const {
+    return tokens;
+}
+void GenerativeRequest::allocateOneBlock(GPU& gpu, size_t slot) const {
+    gpu.addMemoryBlock(*this, slot);
+}
