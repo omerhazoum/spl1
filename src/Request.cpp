@@ -145,3 +145,6 @@ void GenerativeRequest::reserveMemory(GPU& gpu) {
     );
     gpu.reserve(reservedBlocks, *this);
 }
+bool GenerativeRequest::finished() const {
+    return currentTokenIndex >= (tokens.size() + tokenizedOutput.size());
+}
