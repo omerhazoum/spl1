@@ -43,6 +43,7 @@ private:
     std::size_t usedBlocks;
     std::vector<std::string> tokenizedOutput;
     std::vector<std::string> currentPrefix;
+    GenerativeRequest(const GenerativeRequest& other, const Model& model);
 public:
     GenerativeRequest(int id, const Model& model, int admissionCycle, std::string prompt, std::string scriptedOutput,
     std::size_t maxOutputTokens);
@@ -62,8 +63,8 @@ class EmbeddingRequest: public Request{
 private:
     std::size_t currentTokenIndex;
     std::string output;
-public:
     EmbeddingRequest(const EmbeddingRequest& other, const Model& model);
+public:
     EmbeddingRequest(int id, const Model& model, int admissionCycle, std::string prompt);
     std::size_t getNeededMemory(const GPU& gpu) const override;
     std::size_t getMaxNeededMemory() const override;

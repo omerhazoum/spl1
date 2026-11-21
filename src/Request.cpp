@@ -14,7 +14,6 @@ using json = nlohmann::json;
 Request::Request(int id, const Model& model, int admissionCycle, string prompt)
     : id(id), model(model), admissionCycle(admissionCycle),
     tokens(model.tokenizer(prompt)), memoryBlocks(), reservedBlocks(0) {}
-
 Request::Request(const Request& other, const Model& model)
     : id(other.id), model(model), admissionCycle(other.admissionCycle),
     tokens(other.tokens), memoryBlocks(other.memoryBlocks), reservedBlocks(other.reservedBlocks) {}
@@ -38,7 +37,6 @@ void Request::deallocateMemory(GPU& gpu) {
 
 EmbeddingRequest::EmbeddingRequest(int id, const Model& model, int admissionCycle, string prompt)
     : Request(id, model, admissionCycle, prompt), currentTokenIndex(0), output() {}
-
 EmbeddingRequest::EmbeddingRequest(const EmbeddingRequest& other, const Model& model)
     : Request(other, model), currentTokenIndex(other.currentTokenIndex), output(other.output) {}
 
@@ -115,7 +113,11 @@ GenerativeRequest::GenerativeRequest(int id, const Model& model, int admissionCy
             tokenizedOutput.pop_back();
         }
     }
-
+GenerativeRequest::GenerativeRequest(const GenerativeRequest& other, const Model& model)
+    : Request(other, model), scriptedOutput(other.scriptedOutput), maxOutputTokens(other.maxOutputTokens),
+    currentTokenIndex(other.currentTokenIndex), usedBlocks(other.usedBlocks),
+    tokenizedOutput(other.tokenizedOutput), currentPrefix(other.currentPrefix) {}
+    
 size_t GenerativeRequest::getNeededMemory(const GPU& gpu) const {
     PrefixMatch match = gpu.findLongestCachedPrefix(model.getId(), model.getEmbeddingSize(), tokens);
     size_t matchedTokens = match.matchedTokens;
@@ -185,4 +187,7 @@ string GenerativeRequest::getOutput() const {
         output += tokenizedOutput[i];
     }
     return output;
+}
+Request* GenerativeRequest::clone(const Model& model) const {
+    return new GenerativeRequest(*this, model);
 }
