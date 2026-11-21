@@ -17,9 +17,6 @@ Request::Request(int id, const Model& model, int admissionCycle, string prompt)
 Request::Request(const Request& other, const Model& model)
     : id(other.id), model(model), admissionCycle(other.admissionCycle),
     tokens(other.tokens), memoryBlocks(other.memoryBlocks), reservedBlocks(other.reservedBlocks) {}
-Request::~Request() {
-    // Memory deallocation is handled by the GPU, so we don't need to do anything here.
-}
 
 int Request::getId() const {
     return id;
