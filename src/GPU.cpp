@@ -45,26 +45,26 @@ size_t GPU::getBlocksForMemory(size_t memory) const {
 }
 
  void GPU::reserve(size_t n, const Request& request) {
-    requestReservations[&request] += n;
+    requestReservations[request.getId()] += n;
     reservedSlots += n;
 }
 
  void GPU::unreserve(size_t n, const Request& request) {
-    if (requestReservations.count(&request) == 0) {
+    if (requestReservations.count(request.getId()) == 0) {
         return;
     }
-    else if (requestReservations[&request] <= n)
+    else if (requestReservations[request.getId()] <= n)
     {
-        reservedSlots -= requestReservations[&request];
-        requestReservations.erase(&request);
+        reservedSlots -= requestReservations[request.getId()];
+        requestReservations.erase(request.getId());
     } else{
-    requestReservations[&request] -= n;
+    requestReservations[request.getId()] -= n;
     reservedSlots -= n;
     }
 }
 
 size_t GPU::allocateBlock(const Request& request){
-    if(requestReservations.count(&request) == 0||requestReservations[&request] == 0){
+    if(requestReservations.count(request.getId()) == 0||requestReservations[request.getId()] == 0){
         throw std::runtime_error("missing key or invalid reservations number");
         //check whether needed or not!!!
     }

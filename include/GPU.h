@@ -50,7 +50,7 @@ private:
     std::size_t blockSize;
     std::vector<MemoryBlock*> memory;
     std::size_t reservedSlots;
-    std::map<const Request*, std::size_t> requestReservations;
+    std::map<int, std::size_t> requestReservations;
     std::map<std::size_t, std::pair<std::string, std::vector<std::string>>> blockPrefixes;
     std::size_t cacheHits;
     std::size_t evictions;
