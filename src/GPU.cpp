@@ -6,7 +6,6 @@
 #include "Model.h"
 #include "Server.h"
 #include "Request.h"
-#include "SchedulingPolicy.h"
 #include "GPU.h"
 #include "MemoryBlock.h"
 
